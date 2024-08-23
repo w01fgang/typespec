@@ -49,7 +49,7 @@ import {
   unreachable,
 } from "../ast.js";
 import { ProtobufEmitterOptions, reportDiagnostic, state } from "../lib.js";
-import { $field, isMap, Reservation } from "../proto.js";
+import { $field, isMap, Reservation, $optional } from "../proto.js";
 import { writeProtoFile } from "../write.js";
 
 // Cache for scalar -> ProtoScalar map
@@ -202,8 +202,8 @@ function tspToProto(program: Program, emitterOptions: ProtobufEmitterOptions): P
     return {
       package: (
         (details?.properties.get("name") as ModelProperty | undefined)?.type as
-          | StringLiteral
-          | undefined
+        | StringLiteral
+        | undefined
       )?.value,
 
       options: Object.fromEntries(packageOptions),
@@ -289,11 +289,11 @@ function tspToProto(program: Program, emitterOptions: ProtobufEmitterOptions): P
     const input = isEmptyParams
       ? getCachedExternType(program, operation, "TypeSpec.Protobuf.WellKnown.Empty")
       : addImportSourceForProtoIfNeeded(
-          program,
-          addInputParams(operation.parameters, operation),
-          operation,
-          getEffectiveModelType(program, operation.parameters)
-        );
+        program,
+        addInputParams(operation.parameters, operation),
+        operation,
+        getEffectiveModelType(program, operation.parameters)
+      );
 
     return {
       kind: "method",
@@ -827,6 +827,7 @@ function tspToProto(program: Program, emitterOptions: ProtobufEmitterOptions): P
       ),
       index: program.stateMap(state.fieldIndex).get(property),
       doc: getDoc(program, property),
+      optional: program.stateMap(state.optional).get(property),
     };
 
     // Determine if the property type is an array
@@ -950,12 +951,12 @@ function tspToProto(program: Program, emitterOptions: ProtobufEmitterOptions): P
           const mapInfo = mapImportSourceInformation.get(pt as ProtoMap);
           return mapInfo !== undefined
             ? (map(
-                k,
-                addImportSourceForProtoIfNeeded(program, v, mapInfo[0], mapInfo[1]) as
-                  | ProtoRef
-                  | ProtoScalar
-                // Anything else is unreachable by construction.
-              ) as T)
+              k,
+              addImportSourceForProtoIfNeeded(program, v, mapInfo[0], mapInfo[1]) as
+              | ProtoRef
+              | ProtoScalar
+              // Anything else is unreachable by construction.
+            ) as T)
             : pt;
         },
         scalar() {

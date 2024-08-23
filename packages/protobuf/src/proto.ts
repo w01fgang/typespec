@@ -211,4 +211,15 @@ export async function $onValidate(program: Program) {
   }
 }
 
+/**
+ * Decorate a model property with a optional keyword.
+ *
+ * @param param0
+ * @param target
+ * @returns
+ */
+export const $optional: FieldDecorator = (ctx: DecoratorContext, target: ModelProperty) => {
+  ctx.program.stateMap(state.optional).set(target, true);
+};
+
 export const namespace = "TypeSpec.Protobuf";
