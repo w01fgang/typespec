@@ -94,3 +94,8 @@ export type SetTypeDecorator = (
   target: ModelProperty,
   newType: Type
 ) => void;
+
+/**
+ * Set field to be nullable without using union
+ */
+export type NullableDecorator = (context: DecoratorContext, target: ModelProperty) => void;

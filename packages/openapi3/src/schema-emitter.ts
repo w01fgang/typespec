@@ -72,6 +72,7 @@ import {
   getType,
   isReadonlyProperty,
   shouldInline,
+  getNullable,
 } from "@typespec/openapi";
 import { getOneOf, getRef } from "./decorators.js";
 import { OpenAPI3EmitterOptions, reportDiagnostic } from "./lib.js";
@@ -292,42 +293,6 @@ export class OpenAPI3SchemaEmitter extends TypeEmitter<
     return requiredProps.length > 0 ? requiredProps : undefined;
   }
 
-  modelProperties(model: Model): EmitterOutput<Record<string, OpenAPI3SchemaProperty>> {
-    const program = this.emitter.getProgram();
-    const props = new ObjectBuilder();
-    const visibility = this.emitter.getContext().visibility;
-    const contentType = this.#getContentType();
-
-    for (const prop of model.properties.values()) {
-      if (isNeverType(prop.type)) {
-        // If the property has a type of 'never', don't include it in the schema
-        continue;
-      }
-      if (
-        !this.#metadataInfo.isPayloadProperty(prop, visibility, this.#ignoreMetadataAnnotations())
-      ) {
-        continue;
-      }
-      const result = this.emitter.emitModelProperty(prop);
-      const encodedName = resolveEncodedName(program, prop, contentType);
-      props.set(encodedName, result);
-    }
-
-    const discriminator = getDiscriminator(program, model);
-    if (discriminator && !(discriminator.propertyName in props)) {
-      props.set(discriminator.propertyName, {
-        type: "string",
-        description: `Discriminator property for ${model.name}.`,
-      });
-    }
-
-    if (Object.keys(props).length === 0) {
-      return this.emitter.result.none();
-    }
-
-    return props;
-  }
-
   modelPropertyLiteral(prop: ModelProperty): EmitterOutput<object> {
     const program = this.emitter.getProgram();
     const isMultipart = this.#getContentType().startsWith("multipart/");
@@ -352,8 +317,8 @@ export class OpenAPI3SchemaEmitter extends TypeEmitter<
     const refSchema = this.emitter.emitTypeReference(prop.type, {
       referenceContext:
         isMultipart &&
-        (prop.type.kind !== "Union" ||
-          ![...prop.type.variants.values()].some((x) => isBytesKeptRaw(program, x.type)))
+          (prop.type.kind !== "Union" ||
+            ![...prop.type.variants.values()].some((x) => isBytesKeptRaw(program, x.type)))
           ? { contentType: "application/json" }
           : {},
     });
@@ -381,6 +346,12 @@ export class OpenAPI3SchemaEmitter extends TypeEmitter<
 
     if (isReadonlyProperty(program, prop)) {
       additionalProps.readOnly = true;
+    }
+
+    // nullable decorator
+    const isNullable = getNullable(program, prop);
+    if (isNullable) {
+      additionalProps.nullable = isNullable;
     }
 
     // Attach any additional OpenAPI extensions

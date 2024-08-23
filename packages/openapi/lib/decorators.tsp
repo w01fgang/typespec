@@ -111,6 +111,11 @@ model License {
 extern dec info(target: Namespace, additionalInfo: AdditionalInfo);
 
 /**
- * TODO:
+ * Override the field type
  */
 extern dec setType(target: ModelProperty, newType: string);
+
+/**
+ * Set field to be nullable without using union
+ */
+extern dec nullable(target: ModelProperty);

@@ -198,3 +198,12 @@ export const $setType = (context: DecoratorContext, target: ModelProperty, newTy
 export function getType(program: Program, entity: ModelProperty): Type | undefined {
   return program.stateMap(setTypeKey).get(entity);
 }
+
+const setNullable = createStateSymbol("setNullable");
+export const $nullable = (context: DecoratorContext, target: ModelProperty) => {
+  context.program.stateMap(setNullable).set(target, true);
+}
+
+export function getNullable(program: Program, entity: ModelProperty): boolean | undefined {
+  return program.stateMap(setNullable).get(entity);
+}
