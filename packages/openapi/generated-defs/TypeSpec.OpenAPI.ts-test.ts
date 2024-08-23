@@ -5,6 +5,7 @@ import {
   $externalDocs,
   $info,
   $operationId,
+  $setType,
 } from "@typespec/openapi";
 import type {
   DefaultResponseDecorator,
@@ -12,6 +13,7 @@ import type {
   ExternalDocsDecorator,
   InfoDecorator,
   OperationIdDecorator,
+  SetTypeDecorator,
 } from "./TypeSpec.OpenAPI.js";
 
 type Decorators = {
@@ -20,6 +22,7 @@ type Decorators = {
   $defaultResponse: DefaultResponseDecorator;
   $externalDocs: ExternalDocsDecorator;
   $info: InfoDecorator;
+  $setType: SetTypeDecorator;
 };
 
 /** An error here would mean that the exported decorator is not using the same signature. Make sure to have export const $decName: DecNameDecorator = (...) => ... */
@@ -29,4 +32,5 @@ const _: Decorators = {
   $defaultResponse,
   $externalDocs,
   $info,
+  $setType,
 };

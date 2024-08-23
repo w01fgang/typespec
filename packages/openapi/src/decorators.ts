@@ -10,6 +10,7 @@ import {
   Type,
   typespecTypeToJson,
   TypeSpecValue,
+  ModelProperty,
 } from "@typespec/compiler";
 import { setStatusCode } from "@typespec/http";
 import {
@@ -187,4 +188,13 @@ export function resolveInfo(program: Program, entity: Namespace): AdditionalInfo
 
 function omitUndefined<T extends Record<string, unknown>>(data: T): T {
   return Object.fromEntries(Object.entries(data).filter(([k, v]) => v !== undefined)) as any;
+}
+
+const setTypeKey = createStateSymbol("setType");
+export const $setType = (context: DecoratorContext, target: ModelProperty, newType: Type) => {
+  context.program.stateMap(setTypeKey).set(target, newType);
+}
+
+export function getType(program: Program, entity: ModelProperty): Type | undefined {
+  return program.stateMap(setTypeKey).get(entity);
 }

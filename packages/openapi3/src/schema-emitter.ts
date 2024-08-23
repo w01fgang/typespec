@@ -69,6 +69,7 @@ import {
   getExtensions,
   getExternalDocs,
   getOpenAPITypeName,
+  getType,
   isReadonlyProperty,
   shouldInline,
 } from "@typespec/openapi";
@@ -341,6 +342,11 @@ export class OpenAPI3SchemaEmitter extends TypeEmitter<
       ) {
         return { type: "array", items: { type: "string", format: "binary" } };
       }
+    }
+
+    const type = getType(program, prop);
+    if (type) {
+      prop.type = type;
     }
 
     const refSchema = this.emitter.emitTypeReference(prop.type, {

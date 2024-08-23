@@ -138,3 +138,21 @@ Specify the OpenAPI `operationId` property for this operation.
 @operationId("download")
 op read(): string;
 ```
+
+### `@setType` {#@TypeSpec.OpenAPI.setType}
+
+TODO:
+
+```typespec
+@TypeSpec.OpenAPI.setType(newType: string)
+```
+
+#### Target
+
+`ModelProperty`
+
+#### Parameters
+
+| Name    | Type     | Description |
+| ------- | -------- | ----------- |
+| newType | `string` |             |

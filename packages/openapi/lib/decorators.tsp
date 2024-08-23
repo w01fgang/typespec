@@ -109,3 +109,8 @@ model License {
  * @param additionalInfo Additional information
  */
 extern dec info(target: Namespace, additionalInfo: AdditionalInfo);
+
+/**
+ * TODO:
+ */
+extern dec setType(target: ModelProperty, newType: string);

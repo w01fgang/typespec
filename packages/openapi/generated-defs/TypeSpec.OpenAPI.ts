@@ -1,4 +1,11 @@
-import type { DecoratorContext, Model, Namespace, Operation, Type } from "@typespec/compiler";
+import type {
+  DecoratorContext,
+  Model,
+  ModelProperty,
+  Namespace,
+  Operation,
+  Type,
+} from "@typespec/compiler";
 
 /**
  * Specify the OpenAPI `operationId` property for this operation.
@@ -77,4 +84,13 @@ export type InfoDecorator = (
   context: DecoratorContext,
   target: Namespace,
   additionalInfo: Type
+) => void;
+
+/**
+ * Override the field type
+ */
+export type SetTypeDecorator = (
+  context: DecoratorContext,
+  target: ModelProperty,
+  newType: Type
 ) => void;

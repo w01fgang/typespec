@@ -17,6 +17,7 @@ npm install @typespec/openapi
 - [`@externalDocs`](#@externaldocs)
 - [`@info`](#@info)
 - [`@operationId`](#@operationid)
+- [`@setType`](#@settype)
 
 #### `@defaultResponse`
 
@@ -148,3 +149,21 @@ Specify the OpenAPI `operationId` property for this operation.
 @operationId("download")
 op read(): string;
 ```
+
+#### `@setType`
+
+TODO:
+
+```typespec
+@TypeSpec.OpenAPI.setType(newType: string)
+```
+
+##### Target
+
+`ModelProperty`
+
+##### Parameters
+
+| Name    | Type     | Description |
+| ------- | -------- | ----------- |
+| newType | `string` |             |
