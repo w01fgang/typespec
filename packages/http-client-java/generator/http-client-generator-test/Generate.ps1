@@ -2,9 +2,6 @@
 #
 # The purpose of this script is to compact the steps required to regenerate TypeSpec into a single script.
 #
-# If 'com.azure.autorest.customization' tests fails, re-install 'customization-base'.
-#
-# Before running this script the 'tsp' profile must be built, 'mvn install -P local,tsp'.
 param (
   [int] $Parallelization = [Environment]::ProcessorCount
 )
@@ -33,16 +30,16 @@ $generateScript = {
   $tspOptions = "--option ""@typespec/http-client-java.emitter-output-dir={project-root}/tsp-output/$(Get-Random)"""
   if ($tspFile -match "type[\\/]enum[\\/]extensible[\\/]") {
     # override namespace for reserved keyword "enum"
-    $tspOptions += " --option ""@typespec/http-client-java.namespace=com.type.enums.extensible"""
+    $tspOptions += " --option ""@typespec/http-client-java.namespace=type.enums.extensible"""
   } elseif ($tspFile -match "type[\\/]enum[\\/]fixed[\\/]") {
     # override namespace for reserved keyword "enum"
-    $tspOptions += " --option ""@typespec/http-client-java.namespace=com.type.enums.fixed"""
+    $tspOptions += " --option ""@typespec/http-client-java.namespace=type.enums.fixed"""
   } elseif ($tspFile -match "azure[\\/]example[\\/]basic[\\/]") {
     # override examples-directory
     $tspOptions += " --option ""@typespec/http-client-java.examples-directory={project-root}/http/azure/example/basic/examples"""
   } elseif ($tspFile -match "resiliency[\\/]srv-driven[\\/]old\.tsp") {
     # override namespace for "resiliency/srv-driven/old.tsp" (make it different to that from "main.tsp")
-    $tspOptions += " --option ""@typespec/http-client-java.namespace=com.resiliency.servicedriven.v1"""
+    $tspOptions += " --option ""@typespec/http-client-java.namespace=resiliency.servicedriven.v1"""
     # enable advanced versioning for resiliency test
     $tspOptions += " --option ""@typespec/http-client-java.advanced-versioning=true"""
     $tspOptions += " --option ""@typespec/http-client-java.api-version=all"""
@@ -60,6 +57,10 @@ $generateScript = {
     $tspOptions += " --option ""@typespec/http-client-java.api-version=2022-09-01"""
     # exclude preview from service versions
     $tspOptions += " --option ""@typespec/http-client-java.service-version-exclude-preview=true"""
+  } elseif ($tspFile -match "type[\\/]array" -or $tspFile -match "type[\\/]dictionary") {
+    # TODO https://github.com/Azure/autorest.java/issues/2964
+    # also serve as a test for "use-object-for-unknown" emitter option
+    $tspOptions += " --option ""@typespec/http-client-java.use-object-for-unknown=true"""
   } elseif ($tspFile -match "arm.tsp") {
     # for mgmt, do not generate tests due to random mock values
     $tspOptions += " --option ""@typespec/http-client-java.generate-tests=false"""
@@ -77,6 +78,8 @@ $generateScript = {
     $tspOptions += " --option ""@typespec/http-client-java.generate-tests=false"""
     # also generate with group-etag-headers=false since mgmt doesn't support etag grouping yet
     $tspOptions += " --option ""@typespec/http-client-java.group-etag-headers=false"""
+  } elseif ($tspFile -match "subclient.tsp") {
+    $tspOptions += " --option ""@typespec/http-client-java.enable-subclient=true"""
   }
 
   # Test customization for one of the TypeSpec definitions - naming.tsp
@@ -86,7 +89,7 @@ $generateScript = {
   }
 
   $tspTrace = "--trace import-resolution --trace projection --trace http-client-java"
-  $tspCommand = "npx tsp compile $tspFile $tspOptions $tspTrace"
+  $tspCommand = "npx --no-install tsp compile $tspFile $tspOptions $tspTrace"
 
   $timer = [Diagnostics.Stopwatch]::StartNew()
   $generateOutput = Invoke-Expression $tspCommand
@@ -116,33 +119,12 @@ $generateScript = {
   }
 }
 
-Set-Location ../../
+./Setup.ps1
 
-npm install
-npm run build
-npm pack
+New-Item -Path ./existingcode/src/main/java/tsptest -ItemType Directory -Force | Out-Null
 
-Set-Location ./generator/http-client-generator-test
-
-
-if (Test-Path node_modules) {
-    Remove-Item node_modules -Recurse -Force
-}
-
-if (Test-Path package-lock.json) {
-    Remove-Item package-lock.json
-}
-
-# delete output
-if (Test-Path tsp-output) {
-    Remove-Item tsp-output -Recurse -Force
-}
-npm install 
-
-New-Item -Path ./existingcode/src/main/java/com/cadl/ -ItemType Directory -Force | Out-Null
-
-if (Test-Path ./src/main/java/com/cadl/partialupdate) {
-  Copy-Item -Path ./src/main/java/com/cadl/partialupdate -Destination ./existingcode/src/main/java/com/cadl/partialupdate -Recurse -Force
+if (Test-Path ./src/main/java/tsptest/partialupdate) {
+  Copy-Item -Path ./src/main/java/tsptest/partialupdate -Destination ./existingcode/src/main/java/tsptest/partialupdate -Recurse -Force
 }
 
 if (Test-Path ./src/main) {
@@ -155,28 +137,29 @@ if (Test-Path ./tsp-output) {
   Remove-Item ./tsp-output -Recurse -Force
 }
 
-# run other local tests except partial update
+# generate for other local test sources except partial update
 $job = Get-Item ./tsp/* -Filter "*.tsp" -Exclude "*partialupdate*" | ForEach-Object -Parallel $generateScript -ThrottleLimit $Parallelization -AsJob
 
 $job | Wait-Job -Timeout 600
 $job | Receive-Job
 
 # partial update test
-npx tsp compile ./tsp/partialupdate.tsp --option="@typespec/http-client-java.emitter-output-dir={project-root}/existingcode"
-Copy-Item -Path ./existingcode/src/main/java/com/cadl/partialupdate -Destination ./src/main/java/com/cadl/partialupdate -Recurse -Force
+npx --no-install tsp compile ./tsp/partialupdate.tsp --option="@typespec/http-client-java.emitter-output-dir={project-root}/existingcode"
+Copy-Item -Path ./existingcode/src/main/java/tsptest/partialupdate -Destination ./src/main/java/tsptest/partialupdate -Recurse -Force
 Remove-Item ./existingcode -Recurse -Force
 
-# run cadl ranch tests sources
-Copy-Item -Path node_modules/@azure-tools/cadl-ranch-specs/http -Destination ./ -Recurse -Force
+# generate for http-specs/azure-http-specs test sources
+Copy-Item -Path node_modules/@typespec/http-specs/specs -Destination ./ -Recurse -Force
+Copy-Item -Path node_modules/@azure-tools/azure-http-specs/specs -Destination ./ -Recurse -Force
 # remove xml tests, emitter has not supported xml model
-Remove-Item ./http/payload/xml -Recurse -Force
+Remove-Item ./specs/payload/xml -Recurse -Force
 
-$job = (Get-ChildItem ./http -Include "main.tsp","old.tsp" -File -Recurse) | ForEach-Object -Parallel $generateScript -ThrottleLimit $Parallelization -AsJob
+$job = (Get-ChildItem ./specs -Include "main.tsp","old.tsp" -File -Recurse) | ForEach-Object -Parallel $generateScript -ThrottleLimit $Parallelization -AsJob
 
 $job | Wait-Job -Timeout 1200
 $job | Receive-Job
 
-Remove-Item ./http -Recurse -Force
+Remove-Item ./specs -Recurse -Force
 
 Copy-Item -Path ./tsp-output/*/src -Destination ./ -Recurse -Force -Exclude @("ReadmeSamples.java", "module-info.java")
 

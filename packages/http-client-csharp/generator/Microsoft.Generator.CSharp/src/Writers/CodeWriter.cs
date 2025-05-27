@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.Generator.CSharp.Expressions;
 using Microsoft.Generator.CSharp.Primitives;
 using Microsoft.Generator.CSharp.Providers;
+using Microsoft.Generator.CSharp.Snippets;
 using Microsoft.Generator.CSharp.Statements;
 using static Microsoft.Generator.CSharp.Snippets.Snippet;
 
@@ -78,7 +79,7 @@ namespace Microsoft.Generator.CSharp
             const string declarationFormatString = ":D"; // :D :)
             const string identifierFormatString = ":I";
             const string crefFormatString = ":C"; // wraps content into "see cref" tag, available only in xmlDoc
-            foreach ((var span, bool isLiteral, int index) in StringExtensions.GetPathParts(formattableString.Format))
+            foreach ((var span, bool isLiteral, int index) in StringExtensions.GetFormattableStringFormatParts(formattableString.Format))
             {
                 if (isLiteral)
                 {
@@ -267,6 +268,7 @@ namespace Microsoft.Generator.CSharp
                 .AppendRawIf("protected ", modifiers.HasFlag(MethodSignatureModifiers.Protected))
                 .AppendRawIf("internal ", modifiers.HasFlag(MethodSignatureModifiers.Internal))
                 .AppendRawIf("private ", modifiers.HasFlag(MethodSignatureModifiers.Private))
+                .AppendRawIf("new ", modifiers.HasFlag(MethodSignatureModifiers.New))
                 .AppendRawIf("override ", modifiers.HasFlag(MethodSignatureModifiers.Override))
                 .AppendRawIf("static ", modifiers.HasFlag(MethodSignatureModifiers.Static))
                 .AppendRawIf("virtual ", modifiers.HasFlag(MethodSignatureModifiers.Virtual));
@@ -280,7 +282,7 @@ namespace Microsoft.Generator.CSharp
             if (property is IndexPropertyProvider indexer)
             {
                 indexerScope = AmbientScope();
-                Append($"{indexer.Name}[{indexer.IndexerParameter.Type} {indexer.IndexerParameter.AsExpression.Declaration}]");
+                Append($"{indexer.Name}[{indexer.IndexerParameter.Type} {indexer.IndexerParameter.AsExpression().Declaration}]");
             }
             else
             {
@@ -298,7 +300,7 @@ namespace Microsoft.Generator.CSharp
                     else
                     {
                         WriteLine();
-                        using (var scope = ScopeRaw())
+                        using (var scope = ScopeRaw(newLine: false))
                         {
                             getter.Write(AppendRaw("get => "));
                             WriteRawLine(";");
@@ -405,7 +407,7 @@ namespace Microsoft.Generator.CSharp
             AppendRawIf("out ", parameter.IsOut);
             AppendRawIf("ref ", parameter.IsRef);
 
-            Append($"{parameter.Type} {parameter.AsExpression.Declaration}");
+            Append($"{parameter.Type} {parameter.AsExpression().Declaration}");
             if (parameter.DefaultValue != null)
             {
                 AppendRaw(" = ");
@@ -420,6 +422,7 @@ namespace Microsoft.Generator.CSharp
             var modifiers = field.Modifiers;
 
             AppendRaw(modifiers.HasFlag(FieldModifiers.Public) ? "public " : (modifiers.HasFlag(FieldModifiers.Internal) ? "internal " : "private "))
+                .AppendRawIf("protected ", modifiers.HasFlag(FieldModifiers.Protected))
                 .AppendRawIf("const ", modifiers.HasFlag(FieldModifiers.Const))
                 .AppendRawIf("static ", modifiers.HasFlag(FieldModifiers.Static))
                 .AppendRawIf("readonly ", modifiers.HasFlag(FieldModifiers.ReadOnly));
@@ -723,9 +726,9 @@ namespace Microsoft.Generator.CSharp
             }
 
             AppendRawIf("public ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Public))
-                .AppendRawIf("internal ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Internal))
-                .AppendRawIf("protected ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Protected))
                 .AppendRawIf("private ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Private))
+                .AppendRawIf("protected ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Protected))
+                .AppendRawIf("internal ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Internal))
                 .AppendRawIf("static ", methodBase.Modifiers.HasFlag(MethodSignatureModifiers.Static));
 
             if (methodBase is MethodSignature method)

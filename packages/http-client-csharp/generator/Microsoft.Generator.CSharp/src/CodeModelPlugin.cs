@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.Generator.CSharp.Input;
 using Microsoft.Generator.CSharp.Primitives;
 using Microsoft.Generator.CSharp.Providers;
+using Microsoft.Generator.CSharp.SourceInput;
 
 namespace Microsoft.Generator.CSharp
 {
@@ -19,8 +21,10 @@ namespace Microsoft.Generator.CSharp
     [ExportMetadata("PluginName", nameof(CodeModelPlugin))]
     public abstract class CodeModelPlugin
     {
-        private List<LibraryVisitor> _visitors = new();
+        private List<LibraryVisitor> _visitors = [];
+        private List<MetadataReference> _additionalMetadataReferences = [];
         private static CodeModelPlugin? _instance;
+        private List<string> _sharedSourceDirectories = [];
         internal static CodeModelPlugin Instance
         {
             get
@@ -35,13 +39,13 @@ namespace Microsoft.Generator.CSharp
 
         public Configuration Configuration { get; }
 
-        public virtual IReadOnlyList<LibraryVisitor> Visitors => _visitors;
+        public IReadOnlyList<LibraryVisitor> Visitors => _visitors;
 
         [ImportingConstructor]
         public CodeModelPlugin(GeneratorContext context)
         {
             Configuration = context.Configuration;
-            _inputLibrary = new(() => new InputLibrary(Instance.Configuration.OutputDirectory));
+            _inputLibrary = new InputLibrary(Configuration.OutputDirectory);
             TypeFactory = new TypeFactory();
         }
 
@@ -53,24 +57,52 @@ namespace Microsoft.Generator.CSharp
         }
 
         internal bool IsNewProject { get; set; }
-
-        private Lazy<InputLibrary> _inputLibrary;
+        private InputLibrary _inputLibrary;
 
         // Extensibility points to be implemented by a plugin
         public virtual TypeFactory TypeFactory { get; }
+        public virtual SourceInputModel SourceInputModel => _sourceInputModel ?? throw new InvalidOperationException($"SourceInputModel has not been initialized yet");
         public virtual string LicenseString => string.Empty;
         public virtual OutputLibrary OutputLibrary { get; } = new();
-        public virtual InputLibrary InputLibrary => _inputLibrary.Value;
+        public virtual InputLibrary InputLibrary => _inputLibrary;
         public virtual TypeProviderWriter GetWriter(TypeProvider provider) => new(provider);
-        public virtual IReadOnlyList<MetadataReference> AdditionalMetadataReferences => [];
+        public IReadOnlyList<MetadataReference> AdditionalMetadataReferences => _additionalMetadataReferences;
+
+        public IReadOnlyList<string> SharedSourceDirectories => _sharedSourceDirectories;
 
         public virtual void Configure()
         {
         }
 
-        public virtual void AddVisitor(LibraryVisitor visitor)
+        public void AddVisitor(LibraryVisitor visitor)
         {
             _visitors.Add(visitor);
+        }
+
+        public void AddMetadataReference(MetadataReference reference)
+        {
+            _additionalMetadataReferences.Add(reference);
+        }
+
+        public void AddSharedSourceDirectory(string sharedSourceDirectory)
+        {
+            _sharedSourceDirectories.Add(sharedSourceDirectory);
+        }
+
+        private SourceInputModel? _sourceInputModel;
+
+        internal async Task InitializeSourceInputModelAsync()
+        {
+            GeneratedCodeWorkspace existingCode = GeneratedCodeWorkspace.CreateExistingCodeProject([Instance.Configuration.ProjectDirectory], Instance.Configuration.ProjectGeneratedDirectory);
+            _sourceInputModel =  new SourceInputModel(await existingCode.GetCompilationAsync());
+        }
+
+        internal HashSet<string> TypesToKeep { get; } = new();
+        //TODO consider using TypeProvider so we can have a fully qualified name to filter on
+        //https://github.com/microsoft/typespec/issues/4418
+        public void AddTypeToKeep(string typeName)
+        {
+            TypesToKeep.Add(typeName);
         }
     }
 }

@@ -5,10 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
 using Microsoft.Generator.CSharp.ClientModel.Providers;
 using Microsoft.Generator.CSharp.Input;
 using Microsoft.Generator.CSharp.Primitives;
 using Microsoft.Generator.CSharp.Providers;
+using Microsoft.Generator.CSharp.SourceInput;
 using Moq;
 using Moq.Protected;
 
@@ -19,25 +22,50 @@ namespace Microsoft.Generator.CSharp.ClientModel.Tests
         private static readonly string _configFilePath = Path.Combine(AppContext.BaseDirectory, TestHelpersFolder);
         public const string TestHelpersFolder = "TestHelpers";
 
+        public static async Task<Mock<ClientModelPlugin>> LoadMockPluginAsync(
+            Func<IReadOnlyList<InputEnumType>>? inputEnums = null,
+            Func<IReadOnlyList<InputModelType>>? inputModels = null,
+            Func<IReadOnlyList<InputClient>>? clients = null,
+            Func<Task<Compilation>>? compilation = null,
+            string? configuration = null)
+        {
+            var mockPlugin = LoadMockPlugin(
+                inputEnums: inputEnums,
+                inputModels: inputModels,
+                clients: clients,
+                configuration: configuration);
+
+            var compilationResult = compilation == null ? null : await compilation();
+
+            var sourceInputModel = new Mock<SourceInputModel>(() => new SourceInputModel(compilationResult)) { CallBase = true };
+            mockPlugin.Setup(p => p.SourceInputModel).Returns(sourceInputModel.Object);
+
+            return mockPlugin;
+        }
+
         public static Mock<ClientModelPlugin> LoadMockPlugin(
             Func<InputType, TypeProvider, IReadOnlyList<TypeProvider>>? createSerializationsCore = null,
             Func<InputType, CSharpType>? createCSharpTypeCore = null,
             Func<CSharpType>? matchConditionsType = null,
-            Func<CSharpType>? tokenCredentialType = null,
             Func<InputParameter, ParameterProvider>? createParameterCore = null,
             Func<InputApiKeyAuth>? apiKeyAuth = null,
+            Func<InputOAuth2Auth>? oauth2Auth = null,
             Func<IReadOnlyList<string>>? apiVersions = null,
             Func<IReadOnlyList<InputEnumType>>? inputEnums = null,
             Func<IReadOnlyList<InputModelType>>? inputModels = null,
             Func<IReadOnlyList<InputClient>>? clients = null,
             Func<InputLibrary>? createInputLibrary = null,
-            Func<InputClient, ClientProvider>? createClientCore = null)
+            Func<InputClient, ClientProvider>? createClientCore = null,
+            string? configuration = null,
+            ClientResponseApi? clientResponseApi = null,
+            ClientPipelineApi? clientPipelineApi = null,
+            HttpMessageApi? httpMessageApi = null)
         {
             IReadOnlyList<string> inputNsApiVersions = apiVersions?.Invoke() ?? [];
             IReadOnlyList<InputEnumType> inputNsEnums = inputEnums?.Invoke() ?? [];
             IReadOnlyList<InputClient> inputNsClients = clients?.Invoke() ?? [];
             IReadOnlyList<InputModelType> inputNsModels = inputModels?.Invoke() ?? [];
-            InputAuth inputNsAuth = apiKeyAuth != null ? new InputAuth(apiKeyAuth(), null) : new InputAuth();
+            InputAuth inputNsAuth = new InputAuth(apiKeyAuth?.Invoke(), oauth2Auth?.Invoke());
             var mockTypeFactory = new Mock<ScmTypeFactory>() { CallBase = true };
             var mockInputNs = new Mock<InputNamespace>(
                 string.Empty,
@@ -51,12 +79,7 @@ namespace Microsoft.Generator.CSharp.ClientModel.Tests
 
             if (matchConditionsType is not null)
             {
-                mockTypeFactory.Setup(p => p.MatchConditionsType()).Returns(matchConditionsType);
-            }
-
-            if (tokenCredentialType is not null)
-            {
-                mockTypeFactory.Setup(p => p.TokenCredentialType()).Returns(tokenCredentialType);
+                mockTypeFactory.Setup(p => p.MatchConditionsType).Returns(matchConditionsType);
             }
 
             if (createParameterCore is not null)
@@ -84,17 +107,34 @@ namespace Microsoft.Generator.CSharp.ClientModel.Tests
             var clientModelInstance = typeof(ClientModelPlugin).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic);
             // invoke the load method with the config file path
             var loadMethod = typeof(Configuration).GetMethod("Load", BindingFlags.Static | BindingFlags.NonPublic);
-            object?[] parameters = [_configFilePath, null];
+            object?[] parameters = [_configFilePath, configuration];
             var config = loadMethod?.Invoke(null, parameters);
             var mockGeneratorContext = new Mock<GeneratorContext>(config!);
             var mockPluginInstance = new Mock<ClientModelPlugin>(mockGeneratorContext.Object) { CallBase = true };
             mockPluginInstance.SetupGet(p => p.TypeFactory).Returns(mockTypeFactory.Object);
             mockPluginInstance.Setup(p => p.InputLibrary).Returns(mockInputLibrary.Object);
+            if (clientResponseApi is not null)
+            {
+                mockTypeFactory.Setup(p => p.ClientResponseApi).Returns(clientResponseApi);
+            }
+
+            if (clientPipelineApi is not null)
+            {
+                mockTypeFactory.Setup(p => p.ClientPipelineApi).Returns(clientPipelineApi);
+            }
+
+            if (httpMessageApi is not null)
+            {
+                mockTypeFactory.Setup(p => p.HttpMessageApi).Returns(httpMessageApi);
+            }
 
             if (createInputLibrary is not null)
             {
                 mockPluginInstance.Setup(p => p.InputLibrary).Returns(createInputLibrary);
             }
+
+            var sourceInputModel = new Mock<SourceInputModel>(() => new SourceInputModel(null)) { CallBase = true };
+            mockPluginInstance.Setup(p => p.SourceInputModel).Returns(sourceInputModel.Object);
 
             codeModelInstance!.SetValue(null, mockPluginInstance.Object);
             clientModelInstance!.SetValue(null, mockPluginInstance.Object);

@@ -17,7 +17,7 @@ using Azure.ClientGenerator.Core;
   }
 )
 @versioned(ServiceApiVersions)
-namespace Cadl.Flatten;
+namespace TspTest.Flatten;
 
 enum ServiceApiVersions {
   v2022_06_01_preview: "2022-06-01-preview",
@@ -33,9 +33,11 @@ model ApiVersionParameter {
 
 alias Request = {
   @visibility("read") @key name: string;
+  endpoint: string;
   user?: User;
   input: string;
   constant: "constant";
+  requiredInt: int32;
 };
 
 alias LongRequest = {
@@ -44,6 +46,7 @@ alias LongRequest = {
   dataInt: int32;
   dataIntOptional?: int32;
   dataLong?: int64;
+  requiredUser: User;
 
   @clientName("dataFloat")
   @encodedName("application/json", "data_float")
@@ -94,7 +97,7 @@ model TodoItemPatch {
 }
 
 @client({
-  service: Cadl.Flatten,
+  service: TspTest.Flatten,
   name: "FlattenClient",
 })
 @route("/flatten")

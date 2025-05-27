@@ -239,12 +239,6 @@ export const libDef = {
         default: "Enums are not supported unless all options are literals of the same type.",
       },
     },
-    "invalid-default": {
-      severity: "error",
-      messages: {
-        default: paramMessage`Invalid type '${"type"}' for a default value`,
-      },
-    },
     "inline-cycle": {
       severity: "error",
       messages: {
@@ -267,6 +261,24 @@ export const libDef = {
       severity: "warning",
       messages: {
         default: paramMessage`Authentication "${"authType"}" is not a known authentication by the openapi3 emitter, it will be ignored.`,
+      },
+    },
+    "xml-attribute-invalid-property-type": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`XML \`@attribute\` can only be primitive types in the OpenAPI 3 emitter, Property '${"name"}' type will be changed to type: string.`,
+      },
+    },
+    "xml-unwrapped-invalid-property-type": {
+      severity: "warning",
+      messages: {
+        default: paramMessage`XML \`@unwrapped\` can only used on array properties or primitive ones in the OpenAPI 3 emitter, Property '${"name"}' will be ignored.`,
+      },
+    },
+    "invalid-component-fixed-field-key": {
+      severity: "error",
+      messages: {
+        default: paramMessage`Invalid key '${"value"}' used in a fixed field of the Component object. Only alphanumerics, dot (.), hyphen (-), and underscore (_) characters are allowed in keys.`,
       },
     },
   },

@@ -28,7 +28,7 @@ export interface CliHostArgs {
 }
 
 export function withCliHost<T extends CliHostArgs>(
-  fn: (host: CliCompilerHost, args: T) => void | Promise<void>
+  fn: (host: CliCompilerHost, args: T) => void | Promise<void>,
 ): (args: T) => void | Promise<void> {
   return (args: T) => {
     const host = createCLICompilerHost(args);
@@ -40,7 +40,7 @@ export function withCliHost<T extends CliHostArgs>(
  * Resolve Cli host automatically using cli args and handle diagnostics returned by the action.
  */
 export function withCliHostAndDiagnostics<T extends CliHostArgs>(
-  fn: (host: CliCompilerHost, args: T) => readonly Diagnostic[] | Promise<readonly Diagnostic[]>
+  fn: (host: CliCompilerHost, args: T) => readonly Diagnostic[] | Promise<readonly Diagnostic[]>,
 ): (args: T) => void | Promise<void> {
   return async (args: T) => {
     const host = createCLICompilerHost(args);
@@ -54,7 +54,7 @@ export function withCliHostAndDiagnostics<T extends CliHostArgs>(
 }
 
 export function createCLICompilerHost(options: CliHostArgs): CliCompilerHost {
-  const logSink = createConsoleSink({ pretty: options.pretty });
+  const logSink = createConsoleSink({ pretty: options.pretty, pathRelativeTo: process.cwd() });
   const logger = createLogger({ sink: logSink, level: options.debug ? "trace" : "warning" });
   return { ...NodeHost, logSink, logger, debug: options.debug ?? false };
 }
@@ -63,7 +63,7 @@ export function run(
   host: CliCompilerHost,
   command: string,
   commandArgs: string[],
-  options?: RunOptions
+  options?: RunOptions,
 ) {
   const logger = host.logger;
   if (options) {
@@ -118,7 +118,7 @@ export function run(
     logger.error(
       `error: Command '${baseCommandName} ${commandArgs.join(" ")}' failed with exit code ${
         proc.status
-      }.`
+      }.`,
     );
     process.exit(proc.status || 1);
   }

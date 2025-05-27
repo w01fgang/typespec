@@ -9,6 +9,7 @@ using Microsoft.Generator.CSharp.Primitives;
 using Microsoft.Generator.CSharp.Providers;
 using Microsoft.Generator.CSharp.Snippets;
 using Microsoft.Generator.CSharp.Statements;
+using Microsoft.Generator.CSharp.Tests.Common;
 using NUnit.Framework;
 using static Microsoft.Generator.CSharp.Snippets.Snippet;
 
@@ -162,7 +163,7 @@ namespace Microsoft.Generator.CSharp.Tests.Writers
 
             using var codeWriter = new CodeWriter();
             codeWriter.WriteMethod(method);
-            var declScopes = GetDeclarationScopes(param.AsExpression.Declaration);
+            var declScopes = GetDeclarationScopes(param.AsExpression().Declaration);
             Assert.AreEqual(2, declScopes.Count);
             Assert.AreEqual(Helpers.GetExpectedFromFile(), codeWriter.ToString(false));
         }

@@ -15,7 +15,7 @@ describe("query parameters", () => {
   it("create a query param", async () => {
     const param = await getQueryParam(
       `op test(@query myParam: string): void;
-      `
+      `,
     );
     strictEqual(param.name, "myParam");
     deepStrictEqual(param.schema, { type: "string" });
@@ -25,7 +25,7 @@ describe("query parameters", () => {
     const param = await getQueryParam(
       `
       op test(@query("$select") select: string): void;
-      `
+      `,
     );
     strictEqual(param.in, "query");
     strictEqual(param.name, "$select");
@@ -46,7 +46,7 @@ describe("query parameters", () => {
   describe("set explode: false if explode is not set", () => {
     it("with option", async () => {
       const param = await getQueryParam(
-        `op test(@query(#{explode: false}) myParam: string): void;`
+        `op test(@query(#{explode: false}) myParam: string): void;`,
       );
       expect(param).toMatchObject({
         explode: false,
@@ -73,7 +73,7 @@ describe("query parameters", () => {
         @query({name: "$ssv", format: "ssv"}) ssvs: string[],
         @query({name: "$pipes", format: "pipes"}) pipes: string[]
       ): void;
-      `
+      `,
     );
     const params = res.paths["/"].get.parameters;
     deepStrictEqual(params[0], {
@@ -143,7 +143,7 @@ describe("query parameters", () => {
       model UserContext {
         id: string;
       }
-      `
+      `,
     );
     deepStrictEqual(res.paths["/"].get.parameters[0], {
       in: "query",
@@ -160,7 +160,7 @@ describe("query parameters", () => {
     const res = await openApiFor(
       `
       op test(@header arg1: string): void;
-      `
+      `,
     );
     strictEqual(res.paths["/"].get.parameters[0].in, "header");
     strictEqual(res.paths["/"].get.parameters[0].name, "arg1");
@@ -171,7 +171,7 @@ describe("query parameters", () => {
     const res = await openApiFor(
       `
       op test(@header("foo-bar") foo: string): void;
-      `
+      `,
     );
     strictEqual(res.paths["/"].get.parameters[0].in, "header");
     strictEqual(res.paths["/"].get.parameters[0].name, "foo-bar");
@@ -191,7 +191,7 @@ describe("query parameters", () => {
         #suppress "@typespec/openapi3/invalid-format" "test"
         @header({name: "$pipes", format: "pipes"}) pipes: string[]
       ): void;
-      `
+      `,
     );
     const params = res.paths["/"].get.parameters;
     deepStrictEqual(params[0], {
@@ -240,12 +240,33 @@ describe("query parameters", () => {
     });
   });
 
+  it("create a cookie param", async () => {
+    const res = await openApiFor(
+      `
+      op test(@cookie arg1: string): void;
+      `,
+    );
+    strictEqual(res.paths["/"].get.parameters[0].in, "cookie");
+    strictEqual(res.paths["/"].get.parameters[0].name, "arg1");
+    deepStrictEqual(res.paths["/"].get.parameters[0].schema, { type: "string" });
+  });
+
+  it("create a cookie param with a different name", async () => {
+    const res = await openApiFor(
+      `
+      op test(@cookie("foo_bar") foo: string): void;
+      `,
+    );
+    strictEqual(res.paths["/"].get.parameters[0].in, "cookie");
+    strictEqual(res.paths["/"].get.parameters[0].name, "foo_bar");
+  });
+
   // Regression test for https://github.com/microsoft/typespec/issues/414
   it("@doc set the description on the parameter not its schema", async () => {
     const res = await openApiFor(
       `
       op test(@query @doc("my-doc") arg1: string): void;
-      `
+      `,
     );
     strictEqual(res.paths["/"].get.parameters[0].description, "my-doc");
     strictEqual(res.paths["/"].get.parameters[0].schema.description, undefined);
@@ -269,7 +290,7 @@ describe("query parameters", () => {
       @route("/test2")
       op test2(...Q): void;
       `,
-      { "omit-unreachable-types": true }
+      { "omit-unreachable-types": true },
     );
 
     expectDiagnostics(diagnostics, [
@@ -280,27 +301,32 @@ describe("query parameters", () => {
     ]);
   });
 
-  it("encodes parameter keys in references", async () => {
-    const oapi = await openApiFor(`
-      model Pet extends Pet$Id {
-        name: string;
+  it("errors on invalid parameter keys", async () => {
+    const diagnostics = await diagnoseOpenApiFor(
+      `
+      model Pet {
+        @query()
+        $take?: int32;
+        
+        @query()
+        $top?: int32;
       }
-      model Pet$Id {
-        @path
-        petId: string;
+      @service
+      namespace Endpoints {
+        op list(...Pet): void;
       }
-
-      @route("/Pets")
-      @get()
-      op get(... Pet$Id): Pet;
-      `);
-
-    ok(oapi.paths["/Pets/{petId}"].get);
-    strictEqual(
-      oapi.paths["/Pets/{petId}"].get.parameters[0]["$ref"],
-      "#/components/parameters/Pet%24Id"
+      `,
+      { "omit-unreachable-types": true },
     );
-    strictEqual(oapi.components.parameters["Pet$Id"].name, "petId");
+
+    expectDiagnostics(diagnostics, [
+      {
+        code: "@typespec/openapi3/invalid-component-fixed-field-key",
+      },
+      {
+        code: "@typespec/openapi3/invalid-component-fixed-field-key",
+      },
+    ]);
   });
 
   it("inline spread of parameters from anonymous model", async () => {
@@ -308,7 +334,7 @@ describe("query parameters", () => {
       `
       op template<TParameters, TReturn>(...TParameters): TReturn;
       op instantiation is template<{@path id: string}, void>;
-      `
+      `,
     );
 
     ok(oapi.paths["/{id}"].get);
@@ -329,7 +355,7 @@ describe("query parameters", () => {
     const res = await openApiFor(
       `
       op test(@query select: never, @query top: int32): void;
-      `
+      `,
     );
     strictEqual(res.paths["/"].get.parameters.length, 1);
     strictEqual(res.paths["/"].get.parameters[0].in, "query");
@@ -347,6 +373,8 @@ describe("query parameters", () => {
         #suppress "@typespec/http/metadata-ignored"
         @header header: string,
         #suppress "@typespec/http/metadata-ignored"
+        @cookie cookie: string,
+        #suppress "@typespec/http/metadata-ignored"
         @query query: string,
         #suppress "@typespec/http/metadata-ignored"
         @statusCode code: 201,
@@ -356,10 +384,11 @@ describe("query parameters", () => {
       type: "object",
       properties: {
         header: { type: "string" },
+        cookie: { type: "string" },
         query: { type: "string" },
         code: { type: "number", enum: [201] },
       },
-      required: ["header", "query", "code"],
+      required: ["header", "cookie", "query", "code"],
     });
   });
 
@@ -369,7 +398,7 @@ describe("query parameters", () => {
       async (params) => {
         const res = await openApiFor(`op test${params}: void;`);
         strictEqual(res.paths["/"].get.requestBody, undefined);
-      }
+      },
     );
   });
 
@@ -379,15 +408,20 @@ describe("query parameters", () => {
           @header header1: string;
           @header header2: string;
         };
+        cookies: {
+          @cookie cookie1: string;
+          @cookie cookie2: string;
+        };
         name: string;
       ): void;`);
     expect(res.paths["/"].post.requestBody.content["application/json"].schema).toEqual({
       type: "object",
       properties: {
         headers: { type: "object" },
+        cookies: { type: "object" },
         name: { type: "string" },
       },
-      required: ["headers", "name"],
+      required: ["headers", "cookies", "name"],
     });
   });
 
@@ -396,6 +430,10 @@ describe("query parameters", () => {
         @bodyIgnore headers: {
           @header header1: string;
           @header header2: string;
+        };
+        @bodyIgnore cookies: {
+          @cookie cookie1: string;
+          @cookie cookie2: string;
         };
         name: string;
     ): void;`);
@@ -416,7 +454,7 @@ describe("query parameters", () => {
           @header("Content-Type") explicitContentType: "application/octet-stream",
           @body foo: string
         ): void;
-        `
+        `,
       );
       ok(res.paths["/"].post.requestBody.content["application/octet-stream"]);
       deepStrictEqual(res.paths["/"].post.requestBody.content["application/octet-stream"].schema, {
@@ -431,7 +469,7 @@ describe("query parameters", () => {
           @header contentType: "application/octet-stream",
           @body foo: string
         ): void;
-        `
+        `,
       );
       ok(res.paths["/"].post.requestBody.content["application/octet-stream"]);
       deepStrictEqual(res.paths["/"].post.requestBody.content["application/octet-stream"].schema, {
@@ -447,7 +485,7 @@ describe("query parameters", () => {
           @query contentType: "application/octet-stream",
           @body foo: string
         ): void;
-        `
+        `,
       );
       strictEqual(res.paths["/"].post.requestBody.content["application/octet-stream"], undefined);
       ok(res.paths["/"].post.requestBody.content["application/json"]);
@@ -479,7 +517,7 @@ describe("path parameters", () => {
         @extension("x-parameter-extension", "foobaz")
         petId: string;
       ): void;
-      `
+      `,
     );
     strictEqual(oapi.paths["/{petId}"].get.parameters[0]["x-parameter-extension"], "foobaz");
   });
@@ -554,14 +592,14 @@ describe("path parameters", () => {
   describe("emit diagnostic when using style: path", () => {
     it("with option", async () => {
       const diagnostics = await diagnoseOpenApiFor(
-        `op test(@path(#{style: "path"}) myParam: string): void;`
+        `op test(@path(#{style: "path"}) myParam: string): void;`,
       );
       expectDiagnostics(diagnostics, { code: "@typespec/openapi3/invalid-style" });
     });
 
     it("with uri template", async () => {
       const diagnostics = await diagnoseOpenApiFor(
-        `@route("{/myParam}") op test(myParam: string): void;`
+        `@route("{/myParam}") op test(myParam: string): void;`,
       );
       expectDiagnostics(diagnostics, { code: "@typespec/openapi3/invalid-style" });
     });
@@ -570,14 +608,14 @@ describe("path parameters", () => {
   describe("emit diagnostic when using style: fragment", () => {
     it("with option", async () => {
       const diagnostics = await diagnoseOpenApiFor(
-        `op test(@path(#{style: "fragment"}) myParam: string): void;`
+        `op test(@path(#{style: "fragment"}) myParam: string): void;`,
       );
       expectDiagnostics(diagnostics, { code: "@typespec/openapi3/invalid-style" });
     });
 
     it("with uri template", async () => {
       const diagnostics = await diagnoseOpenApiFor(
-        `@route("{#myParam}") op test(myParam: string): void;`
+        `@route("{#myParam}") op test(myParam: string): void;`,
       );
       expectDiagnostics(diagnostics, { code: "@typespec/openapi3/invalid-style" });
     });
@@ -586,14 +624,14 @@ describe("path parameters", () => {
   describe("emit diagnostic when using reserved expansion", () => {
     it("with option", async () => {
       const diagnostics = await diagnoseOpenApiFor(
-        `op test(@path(#{allowReserved: true}) myParam: string): void;`
+        `op test(@path(#{allowReserved: true}) myParam: string): void;`,
       );
       expectDiagnostics(diagnostics, { code: "@typespec/openapi3/path-reserved-expansion" });
     });
 
     it("with uri template", async () => {
       const diagnostics = await diagnoseOpenApiFor(
-        `@route("{+myParam}") op test(myParam: string): void;`
+        `@route("{+myParam}") op test(myParam: string): void;`,
       );
       expectDiagnostics(diagnostics, { code: "@typespec/openapi3/path-reserved-expansion" });
     });

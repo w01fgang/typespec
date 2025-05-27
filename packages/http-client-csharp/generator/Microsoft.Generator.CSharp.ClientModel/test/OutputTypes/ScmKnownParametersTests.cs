@@ -8,22 +8,12 @@ namespace Microsoft.Generator.CSharp.ClientModel.Tests.OutputTypes
 {
     internal class ScmKnownParametersTests
     {
-        [Test]
-        public void TestTokenAuth()
-        {
-            MockHelpers.LoadMockPlugin(tokenCredentialType: () => typeof(int));
-
-            var result = ClientModelPlugin.Instance.TypeFactory.TokenCredentialType();
-            Assert.IsNotNull(result);
-            Assert.AreEqual(new CSharpType(typeof(int)), result);
-        }
-
         [TestCase]
         public void TestMatchConditionsParameter()
         {
             MockHelpers.LoadMockPlugin(matchConditionsType: () => typeof(int));
 
-            var result = ClientModelPlugin.Instance.TypeFactory.MatchConditionsType();
+            var result = ClientModelPlugin.Instance.TypeFactory.MatchConditionsType;
             Assert.IsNotNull(result);
             Assert.AreEqual(new CSharpType(typeof(int)), result);
         }

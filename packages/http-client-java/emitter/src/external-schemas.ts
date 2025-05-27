@@ -14,7 +14,6 @@ import {
   SdkModelType,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
-import { CrossLanguageDefinition } from "./common/client.js";
 import { getNamespace, pascalCase } from "./utils.js";
 
 /*
@@ -24,72 +23,128 @@ import { getNamespace, pascalCase } from "./utils.js";
  */
 export function createResponseErrorSchema(
   schemas: Schemas,
-  stringSchema: StringSchema
+  stringSchema: StringSchema,
 ): ObjectSchema {
-  const responseErrorSchema = new ObjectSchema(
-    "Error",
-    "Status details for long running operations",
-    {
-      language: {
-        default: {
-          namespace: "Azure.Core.Foundations",
-        },
+  const responseErrorSchema = new ObjectSchema("Error", "The error object.", {
+    language: {
+      default: {
+        namespace: "Azure.Core.Foundations",
       },
-    }
-  );
+      java: {
+        namespace: "com.azure.core.models",
+      },
+    },
+  });
+  responseErrorSchema.language.default.crossLanguageDefinitionId = "Azure.Core.Foundations.Error";
+
   schemas.add(responseErrorSchema);
   responseErrorSchema.addProperty(
-    new Property("code", "the error code of this error.", stringSchema, {
+    new Property("code", "One of a server-defined set of error codes.", stringSchema, {
       serializedName: "code",
       required: true,
       nullable: false,
       readOnly: true,
-    })
+    }),
   );
   responseErrorSchema.addProperty(
-    new Property("message", "the error message of this error.", stringSchema, {
+    new Property("message", "A human-readable representation of the error.", stringSchema, {
       serializedName: "message",
       required: true,
       nullable: false,
       readOnly: true,
-    })
+    }),
   );
   responseErrorSchema.addProperty(
-    new Property("target", "the target of this error.", stringSchema, {
+    new Property("target", "The target of this error.", stringSchema, {
       serializedName: "target",
       required: false,
       nullable: true,
       readOnly: true,
-    })
+    }),
   );
   const errorDetailsSchema = new ArraySchema(
     "errorDetails",
     "the array of errors.",
-    responseErrorSchema
+    responseErrorSchema,
   );
   responseErrorSchema.addProperty(
     new Property(
       "errorDetails",
-      "a list of details about specific errors that led to this reported error.",
+      "An array of details about specific errors that led to this reported error.",
       errorDetailsSchema,
       {
         serializedName: "details",
         required: false,
         nullable: true,
         readOnly: true,
-      }
-    )
+      },
+    ),
+  );
+  const innerErrorSchema = createResponseInnerErrorSchema(schemas, stringSchema);
+  responseErrorSchema.addProperty(
+    new Property(
+      "innerError",
+      "An object containing more specific information than the current object about the error.",
+      innerErrorSchema,
+      {
+        serializedName: "innererror",
+        required: false,
+        nullable: true,
+        readOnly: true,
+      },
+    ),
   );
   return responseErrorSchema;
 }
 
+export function createResponseInnerErrorSchema(
+  schemas: Schemas,
+  stringSchema: StringSchema,
+): ObjectSchema {
+  const responseInnerErrorSchema = new ObjectSchema(
+    "InnerError",
+    "An object containing more specific information about the error.",
+    {
+      language: {
+        default: {
+          namespace: "Azure.Core.Foundations",
+        },
+        java: {
+          namespace: "com.azure.core.models",
+        },
+      },
+    },
+  );
+  responseInnerErrorSchema.language.default.crossLanguageDefinitionId =
+    "Azure.Core.Foundations.InnerError";
+
+  schemas.add(responseInnerErrorSchema);
+  responseInnerErrorSchema.addProperty(
+    new Property("code", "One of a server-defined set of error codes.", stringSchema, {
+      serializedName: "code",
+      required: false,
+      nullable: true,
+      readOnly: true,
+    }),
+  );
+  responseInnerErrorSchema.addProperty(
+    new Property("innerError", "Inner error.", responseInnerErrorSchema, {
+      serializedName: "innererror",
+      required: false,
+      nullable: true,
+      readOnly: true,
+    }),
+  );
+  return responseInnerErrorSchema;
+}
+
 export function createPollOperationDetailsSchema(
   schemas: Schemas,
-  stringSchema: StringSchema
+  stringSchema: StringSchema,
 ): ObjectSchema {
   const pollOperationDetailsSchema = new ObjectSchema(
     "PollOperationDetails",
-    "Status details for long running operations",
+    "Status details for long running operations.",
     {
       language: {
         default: {
@@ -99,7 +154,7 @@ export function createPollOperationDetailsSchema(
           namespace: "com.azure.core.util.polling",
         },
       },
-    }
+    },
   );
   schemas.add(pollOperationDetailsSchema);
   pollOperationDetailsSchema.addProperty(
@@ -108,7 +163,7 @@ export function createPollOperationDetailsSchema(
       required: true,
       nullable: false,
       readOnly: true,
-    })
+    }),
   );
   pollOperationDetailsSchema.addProperty(
     new Property("status", "The status of the operation.", stringSchema, {
@@ -116,7 +171,7 @@ export function createPollOperationDetailsSchema(
       required: true,
       nullable: false,
       readOnly: true,
-    })
+    }),
   );
   const responseErrorSchema = createResponseErrorSchema(schemas, stringSchema);
   pollOperationDetailsSchema.addProperty(
@@ -129,13 +184,8 @@ export function createPollOperationDetailsSchema(
         required: false,
         nullable: true,
         readOnly: true,
-        language: {
-          java: {
-            namespace: "com.azure.core.models",
-          },
-        },
-      }
-    )
+      },
+    ),
   );
   return pollOperationDetailsSchema;
 }
@@ -163,7 +213,7 @@ function createFileDetailsSchema(
   propertyName: string,
   namespace: string,
   javaNamespace: string | undefined,
-  schemas: Schemas
+  schemas: Schemas,
 ) {
   const fileDetailsSchema = new ObjectSchema(
     schemaName,
@@ -178,7 +228,7 @@ function createFileDetailsSchema(
         },
       },
       serializationFormats: [KnownMediaType.Multipart],
-    }
+    },
   );
   schemas.add(fileDetailsSchema);
   fileDetailsMap.set(schemaName, fileDetailsSchema);
@@ -191,7 +241,7 @@ function addContentProperty(fileDetailsSchema: ObjectSchema, binarySchema: Binar
       required: true,
       nullable: false,
       readOnly: false,
-    })
+    }),
   );
 }
 
@@ -199,7 +249,7 @@ function addFilenameProperty(
   fileDetailsSchema: ObjectSchema,
   stringSchema: StringSchema,
   filenameProperty?: SdkModelPropertyType,
-  processSchemaFunc?: (type: SdkType) => Schema
+  processSchemaFunc?: (type: SdkType) => Schema,
 ) {
   fileDetailsSchema.addProperty(
     new Property(
@@ -212,8 +262,8 @@ function addFilenameProperty(
         required: filenameProperty ? !filenameProperty.optional : false,
         nullable: false,
         readOnly: false,
-      }
-    )
+      },
+    ),
   );
 }
 
@@ -221,7 +271,7 @@ function addContentTypeProperty(
   fileDetailsSchema: ObjectSchema,
   stringSchema: StringSchema,
   contentTypeProperty?: SdkModelPropertyType,
-  processSchemaFunc?: (type: SdkType) => Schema
+  processSchemaFunc?: (type: SdkType) => Schema,
 ) {
   fileDetailsSchema.addProperty(
     new Property(
@@ -236,8 +286,8 @@ function addContentTypeProperty(
         readOnly: false,
         clientDefaultValue:
           contentTypeProperty?.type.kind === "constant" ? undefined : "application/octet-stream",
-      }
-    )
+      },
+    ),
   );
 }
 
@@ -248,7 +298,7 @@ export function getFileDetailsSchema(
   schemas: Schemas,
   binarySchema: BinarySchema,
   stringSchema: StringSchema,
-  processSchemaFunc: (type: SdkType) => Schema
+  processSchemaFunc: (type: SdkType) => Schema,
 ): ObjectSchema {
   let fileSdkType: SdkModelType | undefined;
   if (property.type.kind === "model") {
@@ -278,18 +328,18 @@ export function getFileDetailsSchema(
         filePropertyName,
         typeNamespace,
         javaNamespace,
-        schemas
+        schemas,
       );
 
       // description if available
-      if (fileSdkType.description) {
-        fileDetailsSchema.summary = fileSdkType.description;
+      if (fileSdkType.summary) {
+        fileDetailsSchema.summary = fileSdkType.summary;
       }
-      if (fileSdkType.details) {
-        fileDetailsSchema.language.default.description = fileSdkType.details;
+      if (fileSdkType.doc) {
+        fileDetailsSchema.language.default.description = fileSdkType.doc;
       }
       // crossLanguageDefinitionId
-      (fileDetailsSchema as CrossLanguageDefinition).crossLanguageDefinitionId =
+      fileDetailsSchema.language.default.crossLanguageDefinitionId =
         fileSdkType.crossLanguageDefinitionId;
 
       let contentTypeProperty;
@@ -314,7 +364,7 @@ export function getFileDetailsSchema(
         fileDetailsSchema,
         stringSchema,
         contentTypeProperty,
-        processSchemaFunc
+        processSchemaFunc,
       );
     }
     return fileDetailsSchema;
@@ -329,7 +379,7 @@ export function getFileDetailsSchema(
         filePropertyName,
         namespace,
         javaNamespace,
-        schemas
+        schemas,
       );
 
       addContentProperty(fileDetailsSchema, binarySchema);

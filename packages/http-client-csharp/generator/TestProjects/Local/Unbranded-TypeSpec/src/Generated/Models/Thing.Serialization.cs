@@ -81,7 +81,7 @@ namespace UnbrandedTypeSpec.Models
                 {
                     writer.WritePropertyName("optionalNullableList"u8);
                     writer.WriteStartArray();
-                    foreach (var item in OptionalNullableList)
+                    foreach (int item in OptionalNullableList)
                     {
                         writer.WriteNumberValue(item);
                     }
@@ -96,7 +96,7 @@ namespace UnbrandedTypeSpec.Models
             {
                 writer.WritePropertyName("requiredNullableList"u8);
                 writer.WriteStartArray();
-                foreach (var item in RequiredNullableList)
+                foreach (int item in RequiredNullableList)
                 {
                     writer.WriteNumberValue(item);
                 }
@@ -106,9 +106,9 @@ namespace UnbrandedTypeSpec.Models
             {
                 writer.WriteNull("requiredNullableList"u8);
             }
-            if (options.Format != "W" && _serializedAdditionalRawData != null)
+            if (options.Format != "W" && _additionalBinaryDataProperties != null)
             {
-                foreach (var item in _serializedAdditionalRawData)
+                foreach (var item in _additionalBinaryDataProperties)
                 {
                     writer.WritePropertyName(item.Key);
 #if NET6_0_OR_GREATER
@@ -157,7 +157,7 @@ namespace UnbrandedTypeSpec.Models
             string requiredBadDescription = default;
             IList<int> optionalNullableList = default;
             IList<int> requiredNullableList = default;
-            IDictionary<string, BinaryData> serializedAdditionalRawData = new ChangeTrackingDictionary<string, BinaryData>();
+            IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();
             foreach (var prop in element.EnumerateObject())
             {
                 if (prop.NameEquals("name"u8))
@@ -194,7 +194,6 @@ namespace UnbrandedTypeSpec.Models
                 {
                     if (prop.Value.ValueKind == JsonValueKind.Null)
                     {
-                        optionalLiteralString = null;
                         continue;
                     }
                     optionalLiteralString = new ThingOptionalLiteralString(prop.Value.GetString());
@@ -204,7 +203,6 @@ namespace UnbrandedTypeSpec.Models
                 {
                     if (prop.Value.ValueKind == JsonValueKind.Null)
                     {
-                        optionalLiteralInt = null;
                         continue;
                     }
                     optionalLiteralInt = new ThingOptionalLiteralInt(prop.Value.GetInt32());
@@ -214,7 +212,6 @@ namespace UnbrandedTypeSpec.Models
                 {
                     if (prop.Value.ValueKind == JsonValueKind.Null)
                     {
-                        optionalLiteralFloat = null;
                         continue;
                     }
                     optionalLiteralFloat = new ThingOptionalLiteralFloat(prop.Value.GetSingle());
@@ -224,7 +221,6 @@ namespace UnbrandedTypeSpec.Models
                 {
                     if (prop.Value.ValueKind == JsonValueKind.Null)
                     {
-                        optionalLiteralBool = null;
                         continue;
                     }
                     optionalLiteralBool = prop.Value.GetBoolean();
@@ -266,7 +262,7 @@ namespace UnbrandedTypeSpec.Models
                 }
                 if (options.Format != "W")
                 {
-                    serializedAdditionalRawData.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));
+                    additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));
                 }
             }
             return new Thing(
@@ -283,7 +279,7 @@ namespace UnbrandedTypeSpec.Models
                 requiredBadDescription,
                 optionalNullableList ?? new ChangeTrackingList<int>(),
                 requiredNullableList,
-                serializedAdditionalRawData);
+                additionalBinaryDataProperties);
         }
 
         BinaryData IPersistableModel<Thing>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
@@ -325,6 +321,10 @@ namespace UnbrandedTypeSpec.Models
         /// <param name="thing"> The <see cref="Thing"/> to serialize into <see cref="BinaryContent"/>. </param>
         public static implicit operator BinaryContent(Thing thing)
         {
+            if (thing == null)
+            {
+                return null;
+            }
             return BinaryContent.Create(thing, ModelSerializationExtensions.WireOptions);
         }
 

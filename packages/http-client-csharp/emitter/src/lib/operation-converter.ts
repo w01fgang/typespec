@@ -4,7 +4,6 @@
 import {
   SdkBodyParameter,
   SdkBuiltInKinds,
-  SdkBuiltInType,
   SdkContext,
   SdkHeaderParameter,
   SdkHttpOperation,
@@ -17,9 +16,8 @@ import {
   SdkType,
   shouldGenerateConvenient,
   shouldGenerateProtocol,
-  UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
-import { getDeprecated, getDoc, getSummary, isErrorModel } from "@typespec/compiler";
+import { getDeprecated, isErrorModel } from "@typespec/compiler";
 import { HttpStatusCodeRange } from "@typespec/http";
 import { getResourceOperation } from "@typespec/rest";
 import { NetEmitterOptions } from "../options.js";
@@ -30,31 +28,31 @@ import { InputConstant } from "../type/input-constant.js";
 import { InputOperationParameterKind } from "../type/input-operation-parameter-kind.js";
 import { InputOperation } from "../type/input-operation.js";
 import { InputParameter } from "../type/input-parameter.js";
-import { InputPrimitiveType, InputType } from "../type/input-type.js";
+import { InputType } from "../type/input-type.js";
 import { convertLroFinalStateVia } from "../type/operation-final-state-via.js";
+import { OperationLongRunning } from "../type/operation-long-running.js";
 import { OperationPaging } from "../type/operation-paging.js";
 import { OperationResponse } from "../type/operation-response.js";
 import { RequestLocation } from "../type/request-location.js";
 import { parseHttpRequestMethod } from "../type/request-method.js";
 import { SdkTypeMap } from "../type/sdk-type-map.js";
-import { fromSdkType } from "./converter.js";
+import { fromSdkModelType, fromSdkType } from "./converter.js";
 import { getExternalDocs, getOperationId } from "./decorators.js";
 import { fromSdkHttpExamples } from "./example-converter.js";
 import { Logger } from "./logger.js";
-import { getInputType } from "./model.js";
+import { isSdkPathParameter } from "./utils.js";
 
 export function fromSdkServiceMethod(
   method: SdkServiceMethod<SdkHttpOperation>,
   uri: string,
-  clientParameters: InputParameter[],
   rootApiVersions: string[],
   sdkContext: SdkContext<NetEmitterOptions>,
-  typeMap: SdkTypeMap
+  typeMap: SdkTypeMap,
 ): InputOperation {
   let generateConvenience = shouldGenerateConvenient(sdkContext, method.operation.__raw.operation);
   if (method.operation.verb === "patch" && generateConvenience) {
     Logger.getInstance().warn(
-      `Convenience method is not supported for PATCH method, it will be automatically turned off. Please set the '@convenientAPI' to false for operation ${method.operation.__raw.operation.name}.`
+      `Convenience method is not supported for PATCH method, it will be automatically turned off. Please set the '@convenientAPI' to false for operation ${method.operation.__raw.operation.name}.`,
     );
     generateConvenience = false;
   }
@@ -63,12 +61,12 @@ export function fromSdkServiceMethod(
     method.operation,
     rootApiVersions,
     sdkContext,
-    typeMap
+    typeMap,
   );
   const responseMap = fromSdkHttpOperationResponses(
     method.operation.responses,
     sdkContext,
-    typeMap
+    typeMap,
   );
   return {
     Name: method.name,
@@ -77,12 +75,10 @@ export function fromSdkServiceMethod(
         .name ??
       getOperationGroupName(sdkContext, method.operation, sdkContext.sdkPackage.rootNamespace),
     Deprecated: getDeprecated(sdkContext.program, method.__raw!),
-    // TODO: we need to figure out how we want to handle summary and description
-    // Right now, we generate garbage <remarks> for some APIs like `Platform-OpenAI-TypeSpec`
-    Summary: getSummary(sdkContext.program, method.__raw!),
-    Description: getDoc(sdkContext.program, method.__raw!),
+    Summary: method.summary,
+    Doc: method.doc,
     Accessibility: method.access,
-    Parameters: [...clientParameters, ...parameterMap.values()],
+    Parameters: [...parameterMap.values()],
     Responses: [...responseMap.values()],
     HttpMethod: parseHttpRequestMethod(method.operation.verb),
     RequestBodyMediaType: getBodyMediaType(method.operation.bodyParam?.type),
@@ -103,7 +99,7 @@ export function fromSdkServiceMethod(
           method.operation.examples,
           parameterMap,
           responseMap,
-          typeMap
+          typeMap,
         )
       : undefined,
   };
@@ -111,12 +107,12 @@ export function fromSdkServiceMethod(
 
 export function getParameterDefaultValue(
   clientDefaultValue: any,
-  parameterType: InputType
+  parameterType: InputType,
 ): InputConstant | undefined {
   if (
     clientDefaultValue === undefined ||
     // a constant parameter should overwrite client default value
-    parameterType.Kind === "constant"
+    parameterType.kind === "constant"
   ) {
     return undefined;
   }
@@ -124,9 +120,9 @@ export function getParameterDefaultValue(
   const kind = getValueType(clientDefaultValue);
   return {
     Type: {
-      Kind: kind,
-      Name: kind,
-      CrossLanguageDefinitionId: `TypeSpec.${kind}`,
+      kind: kind,
+      name: kind,
+      crossLanguageDefinitionId: `TypeSpec.${kind}`,
     },
     Value: clientDefaultValue,
   };
@@ -151,10 +147,18 @@ function fromSdkOperationParameters(
   operation: SdkHttpOperation,
   rootApiVersions: string[],
   sdkContext: SdkContext<NetEmitterOptions>,
-  typeMap: SdkTypeMap
+  typeMap: SdkTypeMap,
 ): Map<SdkHttpParameter, InputParameter> {
   const parameters = new Map<SdkHttpParameter, InputParameter>();
   for (const p of operation.parameters) {
+    if (p.kind === "cookie") {
+      Logger.getInstance().error(
+        `Cookie parameter is not supported: ${p.name}, found in operation ${operation.path}`,
+      );
+      throw new Error(
+        `Cookie parameter is not supported: ${p.name}, found in operation ${operation.path}`,
+      );
+    }
     const param = fromSdkHttpOperationParameter(p, rootApiVersions, sdkContext, typeMap);
     parameters.set(p, param);
   }
@@ -164,90 +168,78 @@ function fromSdkOperationParameters(
       operation.bodyParam,
       rootApiVersions,
       sdkContext,
-      typeMap
+      typeMap,
     );
     parameters.set(operation.bodyParam, bodyParam);
   }
   return parameters;
 }
 
-// TODO: roll back to SdkMethodParameter when we figure out how to represent the parameter location
-// https://github.com/Azure/typespec-azure/issues/981
 function fromSdkHttpOperationParameter(
   p: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter | SdkBodyParameter,
   rootApiVersions: string[],
   sdkContext: SdkContext<NetEmitterOptions>,
-  typeMap: SdkTypeMap
+  typeMap: SdkTypeMap,
 ): InputParameter {
   const isContentType =
     p.kind === "header" && p.serializedName.toLocaleLowerCase() === "content-type";
   const parameterType = fromSdkType(p.type, sdkContext, typeMap);
-  // remove this after: https://github.com/Azure/typespec-azure/issues/1084
-  if (p.type.kind === "bytes") {
-    (parameterType as InputPrimitiveType).Encode = (
-      p.correspondingMethodParams[0].type as SdkBuiltInType
-    ).encode;
-  }
   const format = p.kind === "header" || p.kind === "query" ? p.collectionFormat : undefined;
   const serializedName = p.kind !== "body" ? p.serializedName : p.name;
 
   return {
     Name: p.name,
     NameInRequest: p.kind === "header" ? normalizeHeaderName(serializedName) : serializedName,
-    Description: p.description,
+    Summary: p.summary,
+    Doc: p.doc,
     Type: parameterType,
     Location: getParameterLocation(p),
     IsApiVersion:
       p.name.toLocaleLowerCase() === "apiversion" || p.name.toLocaleLowerCase() === "api-version",
     IsContentType: isContentType,
     IsEndpoint: false,
-    Explode: parameterType.Kind === "array" && format === "multi" ? true : false,
+    Explode: parameterType.kind === "array" && format === "multi" ? true : false,
     ArraySerializationDelimiter: format ? collectionFormatToDelimMap[format] : undefined,
     IsRequired: !p.optional,
     Kind: getParameterKind(p, parameterType, rootApiVersions.length > 0),
     DefaultValue: getParameterDefaultValue(p.clientDefaultValue, parameterType),
     Decorators: p.decorators,
+    SkipUrlEncoding: isSdkPathParameter(p) ? p.allowReserved : false,
   } as InputParameter;
 }
 
 function loadLongRunningOperation(
   method: SdkServiceMethod<SdkHttpOperation>,
   sdkContext: SdkContext<NetEmitterOptions>,
-  typeMap: SdkTypeMap
-): import("../type/operation-long-running.js").OperationLongRunning | undefined {
+  typeMap: SdkTypeMap,
+): OperationLongRunning | undefined {
   if (method.kind !== "lro") {
     return undefined;
   }
-
   return {
-    FinalStateVia: convertLroFinalStateVia(method.__raw_lro_metadata.finalStateVia),
+    FinalStateVia: convertLroFinalStateVia(method.lroMetadata.finalStateVia),
     FinalResponse: {
       // in swagger, we allow delete to return some meaningful body content
       // for now, let assume we don't allow return type
       StatusCodes: method.operation.verb === "delete" ? [204] : [200],
       BodyType:
-        method.__raw_lro_metadata.finalEnvelopeResult &&
-        method.__raw_lro_metadata.finalEnvelopeResult !== "void"
-          ? getInputType(
-              sdkContext,
-              method.__raw_lro_metadata.finalEnvelopeResult,
-              typeMap,
-              method.operation.__raw.operation
-            )
+        method.lroMetadata.finalResponse?.envelopeResult !== undefined
+          ? fromSdkModelType(method.lroMetadata.finalResponse.envelopeResult, sdkContext, typeMap)
           : undefined,
       BodyMediaType: BodyMediaType.Json,
     } as OperationResponse,
-    ResultPath: method.__raw_lro_metadata.finalResultPath,
+    ResultPath: method.lroMetadata.finalResponse?.resultPath,
   };
 }
 
 function fromSdkHttpOperationResponses(
-  operationResponses: Map<HttpStatusCodeRange | number, SdkHttpResponse>,
+  operationResponses: SdkHttpResponse[],
   sdkContext: SdkContext<NetEmitterOptions>,
-  typeMap: SdkTypeMap
+  typeMap: SdkTypeMap,
 ): Map<SdkHttpResponse, OperationResponse> {
   const responses = new Map<SdkHttpResponse, OperationResponse>();
-  for (const [range, r] of operationResponses) {
+  for (const r of operationResponses) {
+    const range = r.statusCodes;
     responses.set(r, {
       StatusCodes: toStatusCodesArray(range),
       BodyType: r.type ? fromSdkType(r.type, sdkContext, typeMap) : undefined,
@@ -263,16 +255,17 @@ function fromSdkHttpOperationResponses(
 function fromSdkServiceResponseHeaders(
   headers: SdkServiceResponseHeader[],
   sdkContext: SdkContext<NetEmitterOptions>,
-  typeMap: SdkTypeMap
+  typeMap: SdkTypeMap,
 ): HttpResponseHeader[] {
   return headers.map(
     (h) =>
       ({
         Name: h.__raw!.name,
         NameInResponse: h.serializedName,
-        Description: h.description,
+        Summary: h.summary,
+        Doc: h.doc,
         Type: fromSdkType(h.type, sdkContext, typeMap),
-      }) as HttpResponseHeader
+      }) as HttpResponseHeader,
   );
 }
 
@@ -303,7 +296,7 @@ function getBodyMediaType(type: SdkType | undefined) {
 
 function getRequestMediaTypes(op: SdkHttpOperation): string[] | undefined {
   const contentTypes = op.parameters.filter(
-    (p) => p.kind === "header" && p.serializedName.toLocaleLowerCase() === "content-type"
+    (p) => p.kind === "header" && p.serializedName.toLocaleLowerCase() === "content-type",
   );
   if (contentTypes.length === 0) return undefined;
   return contentTypes.map((p) => getMediaTypes(p.type)).flat();
@@ -317,7 +310,7 @@ function getMediaTypes(type: SdkType): string[] {
     return [type.value as string];
   } else if (type.kind === "union") {
     const mediaTypes: string[] = [];
-    for (const unionItem of type.values) {
+    for (const unionItem of type.variantTypes) {
       if (unionItem.kind === "constant" && unionItem.valueType.kind === "string") {
         mediaTypes.push(unionItem.value as string);
       } else {
@@ -335,9 +328,9 @@ function getMediaTypes(type: SdkType): string[] {
 }
 
 function loadOperationPaging(
-  method: SdkServiceMethod<SdkHttpOperation>
+  method: SdkServiceMethod<SdkHttpOperation>,
 ): OperationPaging | undefined {
-  if (method.kind !== "paging") {
+  if (method.kind !== "paging" || method.__raw_paged_metadata === undefined) {
     return undefined;
   }
 
@@ -347,9 +340,9 @@ function loadOperationPaging(
   };
 }
 
-// TODO: https://github.com/Azure/typespec-azure/issues/981
+// TODO: https://github.com/Azure/typespec-azure/issues/1441
 function getParameterLocation(
-  p: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter | SdkBodyParameter | undefined
+  p: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter | SdkBodyParameter | undefined,
 ): RequestLocation {
   switch (p?.kind) {
     case "path":
@@ -368,27 +361,37 @@ function getParameterLocation(
 function getParameterKind(
   p: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter | SdkBodyParameter,
   type: InputType,
-  hasGlobalApiVersion: boolean
+  hasGlobalApiVersion: boolean,
 ): InputOperationParameterKind {
   if (p.kind === "body") {
-    if (type.Kind === "model" && (type.Usage & UsageFlags.Spread) !== 0) {
+    /** TODO: remove this and use the spread metadata of parameter when https://github.com/Azure/typespec-azure/issues/1513 is resolved */
+    if (type.kind === "model" && p.type !== p.correspondingMethodParams[0]?.type) {
       return InputOperationParameterKind.Spread;
     }
     return InputOperationParameterKind.Method;
   }
-  return type.Kind === "constant"
+
+  /** remove this, use p.onClient directly when https://github.com/Azure/typespec-azure/issues/1532 is resolved */
+  const paramOnClient =
+    p.correspondingMethodParams &&
+    p.correspondingMethodParams.length > 0 &&
+    p.correspondingMethodParams[0].onClient;
+
+  return type.kind === "constant"
     ? InputOperationParameterKind.Constant
     : p.isApiVersionParam
       ? hasGlobalApiVersion
         ? InputOperationParameterKind.Client
         : InputOperationParameterKind.Method
-      : InputOperationParameterKind.Method;
+      : paramOnClient // use p.onClient when https://github.com/Azure/typespec-azure/issues/1532 is resolved
+        ? InputOperationParameterKind.Client
+        : InputOperationParameterKind.Method;
 }
 
 function getOperationGroupName(
   context: SdkContext,
   operation: SdkHttpOperation,
-  namespace: string
+  namespace: string,
 ): string {
   const explicitOperationId = getOperationId(context, operation.__raw.operation);
   if (explicitOperationId) {

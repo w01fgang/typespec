@@ -18,7 +18,7 @@ import {
 import { getJsScalar } from "../common/scalar.js";
 import { JsContext } from "../ctx.js";
 import { reportDiagnostic } from "../lib.js";
-import { parseCase } from "./case.js";
+import { isUnspeakable, parseCase } from "./case.js";
 import { UnimplementedError, UnreachableError } from "./error.js";
 import { getAllProperties } from "./extends.js";
 import { categorize, indent } from "./iter.js";
@@ -227,6 +227,8 @@ export interface SubjectReference {
   kind: "subject";
 }
 
+const SUBJECT = { kind: "subject" } as SubjectReference;
+
 /**
  * A reference to a model property. Model property references are rendered by the `referenceModelProperty` function in the
  * options given to `writeCodeTree`, allowing the caller to define how model properties are stored.
@@ -280,7 +282,7 @@ const PROPERTY_ID = (prop: ModelProperty) => parseCase(prop.name).camelCase;
 export function differentiateUnion(
   ctx: JsContext,
   union: Union,
-  renderPropertyName: (prop: ModelProperty) => string = PROPERTY_ID
+  renderPropertyName: (prop: ModelProperty) => string = PROPERTY_ID,
 ): CodeTree {
   const discriminator = getDiscriminator(ctx.program, union)?.propertyName;
   const variants = [...union.variants.values()];
@@ -299,7 +301,7 @@ export function differentiateUnion(
       }
     }
 
-    return differentiateTypes(ctx, cases, PROPERTY_ID);
+    return differentiateTypes(ctx, cases, renderPropertyName);
   } else {
     const property = (variants[0].type as Model).properties.get(discriminator)!;
 
@@ -340,7 +342,7 @@ export function differentiateUnion(
 export function differentiateTypes(
   ctx: JsContext,
   cases: Set<PreciseType>,
-  renderPropertyName: (prop: ModelProperty) => string = PROPERTY_ID
+  renderPropertyName: (prop: ModelProperty) => string = PROPERTY_ID,
 ): CodeTree {
   if (cases.size === 0) {
     return {
@@ -362,7 +364,7 @@ export function differentiateTypes(
   const scalars = (categories.Scalar as Scalar[]) ?? [];
 
   if (literals.length + scalars.length === 0) {
-    return differentiateModelTypes(ctx, select(models, cases));
+    return differentiateModelTypes(ctx, select(models, cases), renderPropertyName);
   } else {
     const branches: IfBranch[] = [];
     for (const literal of literals) {
@@ -370,7 +372,7 @@ export function differentiateTypes(
         condition: {
           kind: "binary-op",
           operator: "===",
-          left: { kind: "subject" },
+          left: SUBJECT,
           right: { kind: "literal", value: getJsValue(ctx, literal) },
         },
         body: {
@@ -403,7 +405,7 @@ export function differentiateTypes(
           test = {
             kind: "binary-op",
             operator: "instanceof",
-            left: { kind: "subject" },
+            left: SUBJECT,
             right: { kind: "verbatim", text: "Uint8Array" },
           };
           break;
@@ -411,7 +413,7 @@ export function differentiateTypes(
           test = {
             kind: "binary-op",
             operator: "===",
-            left: { kind: "typeof", operand: { kind: "subject" } },
+            left: { kind: "typeof", operand: SUBJECT },
             right: { kind: "literal", value: "number" },
           };
           break;
@@ -419,7 +421,7 @@ export function differentiateTypes(
           test = {
             kind: "binary-op",
             operator: "===",
-            left: { kind: "typeof", operand: { kind: "subject" } },
+            left: { kind: "typeof", operand: SUBJECT },
             right: { kind: "literal", value: "bigint" },
           };
           break;
@@ -427,7 +429,7 @@ export function differentiateTypes(
           test = {
             kind: "binary-op",
             operator: "===",
-            left: { kind: "typeof", operand: { kind: "subject" } },
+            left: { kind: "typeof", operand: SUBJECT },
             right: { kind: "literal", value: "string" },
           };
           break;
@@ -435,7 +437,7 @@ export function differentiateTypes(
           test = {
             kind: "binary-op",
             operator: "===",
-            left: { kind: "typeof", operand: { kind: "subject" } },
+            left: { kind: "typeof", operand: SUBJECT },
             right: { kind: "literal", value: "boolean" },
           };
           break;
@@ -443,13 +445,13 @@ export function differentiateTypes(
           test = {
             kind: "binary-op",
             operator: "instanceof",
-            left: { kind: "subject" },
+            left: SUBJECT,
             right: { kind: "verbatim", text: "Date" },
           };
           break;
         default:
           throw new UnimplementedError(
-            `scalar differentiation for unknown JS Scalar '${jsScalar}'.`
+            `scalar differentiation for unknown JS Scalar '${jsScalar}'.`,
           );
       }
 
@@ -465,7 +467,10 @@ export function differentiateTypes(
     return {
       kind: "if-chain",
       branches,
-      else: models.length > 0 ? differentiateModelTypes(ctx, select(models, cases)) : undefined,
+      else:
+        models.length > 0
+          ? differentiateModelTypes(ctx, select(models, cases), renderPropertyName)
+          : undefined,
     };
   }
 
@@ -514,7 +519,7 @@ function getJsValue(ctx: JsContext, literal: JsLiteralType | EnumMember): Litera
     default:
       throw new UnreachableError(
         "getJsValue for " + (literal satisfies never as JsLiteralType).kind,
-        { literal }
+        { literal },
       );
   }
 }
@@ -556,7 +561,7 @@ function overlaps(range: IntegerRange, other: IntegerRange): boolean {
 export function differentiateModelTypes(
   ctx: JsContext,
   models: Set<Model>,
-  renderPropertyName: (prop: ModelProperty) => string = PROPERTY_ID
+  renderPropertyName: (prop: ModelProperty) => string = PROPERTY_ID,
 ): CodeTree {
   // Horrible n^2 operation to get the unique properties of all models in the map, but hopefully n is small, so it should
   // be okay until you have a lot of models to differentiate.
@@ -580,6 +585,9 @@ export function differentiateModelTypes(
     for (const prop of getAllProperties(model)) {
       // Don't consider optional properties for differentiation.
       if (prop.optional) continue;
+
+      // Ignore properties that have no parseable name.
+      if (isUnspeakable(prop.name)) continue;
 
       const renderedPropName = renderPropertyName(prop) as RenderedPropertyName;
 
@@ -695,17 +703,27 @@ export function differentiateModelTypes(
       const firstUniqueLiteral = literals.values().next().value as RenderedPropertyName;
 
       const property = [...model.properties.values()].find(
-        (p) => (renderPropertyName(p) as RenderedPropertyName) === firstUniqueLiteral
+        (p) => (renderPropertyName(p) as RenderedPropertyName) === firstUniqueLiteral,
       )!;
 
       branches.push({
         condition: {
           kind: "binary-op",
-          left: { kind: "model-property", property },
-          operator: "===",
+          left: {
+            kind: "binary-op",
+            left: { kind: "literal", value: renderPropertyName(property) },
+            operator: "in",
+            right: SUBJECT,
+          },
+          operator: "&&",
           right: {
-            kind: "literal",
-            value: getJsValue(ctx, property.type as JsLiteralType),
+            kind: "binary-op",
+            left: { kind: "model-property", property },
+            operator: "===",
+            right: {
+              kind: "literal",
+              value: getJsValue(ctx, property.type as JsLiteralType),
+            },
           },
         },
         body: { kind: "result", type: model },
@@ -715,18 +733,28 @@ export function differentiateModelTypes(
       const firstUniqueRange = ranges.values().next().value as RenderedPropertyName;
 
       const property = [...model.properties.values()].find(
-        (p) => renderPropertyName(p) === firstUniqueRange
+        (p) => renderPropertyName(p) === firstUniqueRange,
       )!;
 
       const range = [...propertyRanges.get(firstUniqueRange)!.entries()].find(
-        ([range, candidate]) => candidate === model
+        ([range, candidate]) => candidate === model,
       )![0];
 
       branches.push({
         condition: {
-          kind: "in-range",
-          expr: { kind: "model-property", property },
-          range,
+          kind: "binary-op",
+          left: {
+            kind: "binary-op",
+            left: { kind: "literal", value: renderPropertyName(property) },
+            operator: "in",
+            right: SUBJECT,
+          },
+          operator: "&&",
+          right: {
+            kind: "in-range",
+            expr: { kind: "model-property", property },
+            range,
+          },
         },
         body: { kind: "result", type: model },
       });
@@ -738,7 +766,7 @@ export function differentiateModelTypes(
           kind: "binary-op",
           left: { kind: "literal", value: firstUniqueProp },
           operator: "in",
-          right: { kind: "subject" },
+          right: SUBJECT,
         },
         body: { kind: "result", type: model },
       });
@@ -793,7 +821,7 @@ export interface CodeTreeOptions {
 export function* writeCodeTree(
   ctx: JsContext,
   tree: CodeTree,
-  options: CodeTreeOptions
+  options: CodeTreeOptions,
 ): Iterable<string> {
   switch (tree.kind) {
     case "result":
@@ -849,7 +877,7 @@ function writeExpression(ctx: JsContext, expression: Expression, options: CodeTr
       return `(${writeExpression(ctx, expression.left, options)}) ${expression.operator} (${writeExpression(
         ctx,
         expression.right,
-        options
+        options,
       )})`;
     case "unary-op":
       return `${expression.operator}(${writeExpression(ctx, expression.operand, options)})`;
@@ -866,7 +894,7 @@ function writeExpression(ctx: JsContext, expression: Expression, options: CodeTr
           return expression.value ? "true" : "false";
         default:
           throw new UnreachableError(
-            `writeExpression for literal value type '${typeof expression.value}'`
+            `writeExpression for literal value type '${typeof expression.value}'`,
           );
       }
     case "in-range": {
@@ -889,7 +917,7 @@ function writeExpression(ctx: JsContext, expression: Expression, options: CodeTr
         "writeExpression for " + (expression satisfies never as Expression).kind,
         {
           expression,
-        }
+        },
       );
   }
 }

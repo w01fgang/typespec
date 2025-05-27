@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license.
 
-import { ModelProperty, Type } from "@typespec/compiler";
+import { ModelProperty, Type, compilerAssert } from "@typespec/compiler";
 import {
   HttpOperation,
   HttpOperationParameter,
@@ -19,7 +19,7 @@ import {
   requireSerialization,
 } from "../../common/serialization/index.js";
 import { Module, completePendingDeclarations, createModule } from "../../ctx.js";
-import { parseCase } from "../../util/case.js";
+import { isUnspeakable, parseCase } from "../../util/case.js";
 import { UnimplementedError } from "../../util/error.js";
 import { getAllProperties } from "../../util/extends.js";
 import { bifilter, indent } from "../../util/iter.js";
@@ -27,6 +27,7 @@ import { keywordSafe } from "../../util/keywords.js";
 import { HttpContext } from "../index.js";
 
 import { module as routerHelpers } from "../../../generated-defs/helpers/router.js";
+import { reportDiagnostic } from "../../lib.js";
 import { differentiateUnion, writeCodeTree } from "../../util/differentiate.js";
 
 const DEFAULT_CONTENT_TYPE = "application/json";
@@ -67,7 +68,7 @@ export function emitRawServer(ctx: HttpContext, operationsModule: Module): Modul
 function* emitRawServerOperation(
   ctx: HttpContext,
   operation: HttpOperation,
-  module: Module
+  module: Module,
 ): Iterable<string> {
   const op = operation.operation;
   const operationNameCase = parseCase(op.name);
@@ -101,7 +102,7 @@ function* emitRawServerOperation(
   yield "): Promise<void> {";
 
   const [_, parameters] = bifilter(op.parameters.properties.values(), (param) =>
-    isValueLiteralType(param.type)
+    isValueLiteralType(param.type),
   );
 
   const queryParams: Extract<HttpOperationParameter, { type: "query" }>[] = [];
@@ -115,6 +116,8 @@ function* emitRawServerOperation(
       case "header":
         yield* indent(emitHeaderParamBinding(ctx, parameter));
         break;
+      case "cookie":
+        throw new UnimplementedError("cookie parameters");
       case "query":
         queryParams.push(parameter);
         parsedParams.add(resolvedParameter);
@@ -127,7 +130,7 @@ function* emitRawServerOperation(
         throw new Error(
           `UNREACHABLE: parameter type ${
             (parameter satisfies never as HttpOperationParameter).type
-          }`
+          }`,
         );
     }
   }
@@ -144,7 +147,7 @@ function* emitRawServerOperation(
   const bodyFields = new Map<string, Type>(
     operation.parameters.body && operation.parameters.body.type.kind === "Model"
       ? getAllProperties(operation.parameters.body.type).map((p) => [p.name, p.type] as const)
-      : []
+      : [],
   );
 
   let bodyName: string | undefined = undefined;
@@ -171,7 +174,7 @@ function* emitRawServerOperation(
       body.type,
       body.property?.type ?? operation.operation.node,
       module,
-      { altName: defaultBodyTypeName }
+      { altName: defaultBodyTypeName },
     );
 
     bodyName = bodyNameCase.camelCase;
@@ -259,7 +262,7 @@ function* emitRawServerOperation(
         resolvedParameter.type.kind === "Scalar" && parsedParams.has(resolvedParameter)
           ? parseTemplateForScalar(ctx, resolvedParameter.type).replace(
               "{}",
-              paramNameCase.camelCase
+              paramNameCase.camelCase,
             )
           : paramNameCase.camelCase;
     }
@@ -276,12 +279,13 @@ function* emitRawServerOperation(
 
   if (hasOptions) {
     paramLines.push(
-      `{ ${[...optionalParams.entries()].map(([name, expr]) => (name === expr ? name : `${name}: ${expr}`)).join(", ")} }`
+      `{ ${[...optionalParams.entries()].map(([name, expr]) => (name === expr ? name : `${name}: ${expr}`)).join(", ")} }`,
     );
   }
 
   yield `  const result = await operations.${operationNameCase.camelCase}(ctx, `;
   yield* indent(indent(paramLines));
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   yield `  );`, yield "";
 
   yield* indent(emitResultProcessing(ctx, op.returnType, module));
@@ -328,7 +332,7 @@ function* emitResultProcessing(ctx: HttpContext, t: Type, module: Module): Itera
 function* emitResultProcessingForType(
   ctx: HttpContext,
   target: Type,
-  module: Module
+  module: Module,
 ): Iterable<string> {
   if (target.kind !== "Model") {
     throw new UnimplementedError(`result processing for type kind '${target.kind}'`);
@@ -342,8 +346,25 @@ function* emitResultProcessingForType(
       yield `response.setHeader(${JSON.stringify(headerName.toLowerCase())}, result.${parseCase(property.name).camelCase});`;
       if (!body) yield `delete (result as any).${parseCase(property.name).camelCase};`;
     } else if (isStatusCode(ctx.program, property)) {
-      yield `response.statusCode = result.${parseCase(property.name).camelCase};`;
-      if (!body) yield `delete (result as any).${parseCase(property.name).camelCase};`;
+      if (isUnspeakable(property.name)) {
+        if (!isValueLiteralType(property.type)) {
+          reportDiagnostic(ctx.program, {
+            code: "unspeakable-status-code",
+            target: property,
+            format: {
+              name: property.name,
+            },
+          });
+          continue;
+        }
+
+        compilerAssert(property.type.kind === "Number", "Status code must be a number.");
+
+        yield `response.statusCode = ${property.type.valueAsString};`;
+      } else {
+        yield `response.statusCode = result.${parseCase(property.name).camelCase};`;
+        if (!body) yield `delete (result as any).${parseCase(property.name).camelCase};`;
+      }
     }
   }
 
@@ -393,7 +414,7 @@ function* emitResultProcessingForType(
  */
 function* emitHeaderParamBinding(
   ctx: HttpContext,
-  parameter: Extract<HttpOperationParameter, { type: "header" }>
+  parameter: Extract<HttpOperationParameter, { type: "header" }>,
 ): Iterable<string> {
   const nameCase = parseCase(parameter.param.name);
 
@@ -424,7 +445,7 @@ function* emitHeaderParamBinding(
  */
 function* emitQueryParamBinding(
   ctx: HttpContext,
-  parameter: Extract<HttpOperationParameter, { type: "query" }>
+  parameter: Extract<HttpOperationParameter, { type: "query" }>,
 ): Iterable<string> {
   const nameCase = parseCase(parameter.param.name);
 
@@ -432,7 +453,7 @@ function* emitQueryParamBinding(
   yield `const ${nameCase.camelCase} = __query_params.get(${JSON.stringify(parameter.name)}) ?? undefined;`;
 
   if (!parameter.param.optional) {
-    yield `if (${nameCase.camelCase} === null) {`;
+    yield `if (!${nameCase.camelCase}) {`;
     // prettier-ignore
     yield `  throw new Error("Invalid request: missing required query parameter '${parameter.name}'.");`;
     yield "}";

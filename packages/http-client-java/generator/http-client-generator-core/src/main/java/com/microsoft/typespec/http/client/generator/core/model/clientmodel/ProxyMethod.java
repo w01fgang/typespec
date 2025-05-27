@@ -3,13 +3,13 @@
 
 package com.microsoft.typespec.http.client.generator.core.model.clientmodel;
 
-import com.microsoft.typespec.http.client.generator.core.extension.plugin.JavaSettings;
-import com.microsoft.typespec.http.client.generator.core.extension.base.util.HttpExceptionType;
-import com.microsoft.typespec.http.client.generator.core.util.CodeNamer;
-import com.microsoft.typespec.http.client.generator.core.util.MethodNamer;
 import com.azure.core.http.ContentType;
 import com.azure.core.http.HttpMethod;
-
+import com.microsoft.typespec.http.client.generator.core.extension.base.util.HttpExceptionType;
+import com.microsoft.typespec.http.client.generator.core.extension.plugin.JavaSettings;
+import com.microsoft.typespec.http.client.generator.core.util.ClientModelUtil;
+import com.microsoft.typespec.http.client.generator.core.util.CodeNamer;
+import com.microsoft.typespec.http.client.generator.core.util.MethodNamer;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -292,15 +292,11 @@ public class ProxyMethod {
             return syncProxy;
         }
 
-        List<ProxyMethodParameter> syncParams = this.getParameters()
-            .stream()
-            .map(this::mapToSyncParam)
-            .collect(Collectors.toList());
+        List<ProxyMethodParameter> syncParams
+            = this.getParameters().stream().map(this::mapToSyncParam).collect(Collectors.toList());
 
-        List<ProxyMethodParameter> allSyncParams = this.getAllParameters()
-            .stream()
-            .map(this::mapToSyncParam)
-            .collect(Collectors.toList());
+        List<ProxyMethodParameter> allSyncParams
+            = this.getAllParameters().stream().map(this::mapToSyncParam).collect(Collectors.toList());
 
         this.syncProxy = new ProxyMethod.Builder().parameters(syncParams)
             .httpMethod(this.getHttpMethod())
@@ -357,8 +353,9 @@ public class ProxyMethod {
                 }
 
                 if (genericType.getTypeArguments()[0] == ClassType.STREAM_RESPONSE) {
-                    return JavaSettings.getInstance().isInputStreamForBinary() ? GenericType.Response(
-                        ClassType.INPUT_STREAM) : GenericType.Response(ClassType.BINARY_DATA);
+                    return JavaSettings.getInstance().isInputStreamForBinary()
+                        ? GenericType.Response(ClassType.INPUT_STREAM)
+                        : GenericType.Response(ClassType.BINARY_DATA);
                 }
                 return genericType.getTypeArguments()[0];
             }
@@ -386,15 +383,33 @@ public class ProxyMethod {
     public void addImportsTo(Set<String> imports, boolean includeImplementationImports, JavaSettings settings) {
         Annotation.HTTP_REQUEST_INFORMATION.addImportsTo(imports);
         Annotation.UNEXPECTED_RESPONSE_EXCEPTION_INFORMATION.addImportsTo(imports);
+        ClassType.HTTP_RESPONSE_EXCEPTION.addImportsTo(imports, false);
         if (includeImplementationImports) {
             if (getUnexpectedResponseExceptionType() != null) {
                 Annotation.UNEXPECTED_RESPONSE_EXCEPTION_TYPE.addImportsTo(imports);
                 getUnexpectedResponseExceptionType().addImportsTo(imports, includeImplementationImports);
+
+                if (!settings.isBranded()) {
+                    ClientModel errorModel
+                        = ClientModelUtil.getErrorModelFromException(getUnexpectedResponseExceptionType());
+                    if (errorModel != null) {
+                        errorModel.addImportsTo(imports, settings);
+                    }
+                }
             }
             if (getUnexpectedResponseExceptionTypes() != null) {
                 Annotation.UNEXPECTED_RESPONSE_EXCEPTION_TYPE.addImportsTo(imports);
                 getUnexpectedResponseExceptionTypes().keySet()
                     .forEach(e -> e.addImportsTo(imports, includeImplementationImports));
+
+                if (!settings.isBranded()) {
+                    for (ClassType exceptionType : getUnexpectedResponseExceptionTypes().keySet()) {
+                        ClientModel errorModel = ClientModelUtil.getErrorModelFromException(exceptionType);
+                        if (errorModel != null) {
+                            errorModel.addImportsTo(imports, settings);
+                        }
+                    }
+                }
             }
             if (isResumable()) {
                 imports.add("com.azure.core.annotation.ResumeOperation");
@@ -469,7 +484,9 @@ public class ProxyMethod {
 
         /*
          * Sets the Content-Type of the request.
+         * 
          * @param requestContentType the Content-Type of the request
+         * 
          * @return the Builder itself
          */
         public Builder requestContentType(String requestContentType) {
@@ -551,8 +568,8 @@ public class ProxyMethod {
          * unexpected response status code
          * @return the Builder itself
          */
-        public Builder unexpectedResponseExceptionTypes(
-            Map<ClassType, List<Integer>> unexpectedResponseExceptionTypes) {
+        public Builder
+            unexpectedResponseExceptionTypes(Map<ClassType, List<Integer>> unexpectedResponseExceptionTypes) {
             this.unexpectedResponseExceptionTypes = unexpectedResponseExceptionTypes;
             return this;
         }

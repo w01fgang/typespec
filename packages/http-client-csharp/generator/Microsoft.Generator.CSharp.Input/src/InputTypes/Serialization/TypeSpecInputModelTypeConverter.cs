@@ -38,7 +38,8 @@ namespace Microsoft.Generator.CSharp.Input
                 crossLanguageDefinitionId: null!,
                 access: null,
                 deprecation: null,
-                description: null,
+                summary: null,
+                doc: null,
                 usage: InputModelTypeUsage.None,
                 properties: [],
                 baseModel: null,
@@ -52,8 +53,9 @@ namespace Microsoft.Generator.CSharp.Input
 
             string? crossLanguageDefinitionId = null;
             string? accessibility = null;
-            string? deprecated = null;
-            string? description = null;
+            string? deprecation = null;
+            string? summary = null;
+            string? doc = null;
             string? usageString = null;
             InputModelProperty? discriminatorProperty = null;
             string? discriminatorValue = null;
@@ -67,20 +69,21 @@ namespace Microsoft.Generator.CSharp.Input
             // read all possible properties and throw away the unknown properties
             while (reader.TokenType != JsonTokenType.EndObject)
             {
-                var isKnownProperty = reader.TryReadString(nameof(InputModelType.Name), ref name)
-                    || reader.TryReadString(nameof(InputModelType.CrossLanguageDefinitionId), ref crossLanguageDefinitionId)
-                    || reader.TryReadString(nameof(InputModelType.Access), ref accessibility)
-                    || reader.TryReadString(nameof(InputModelType.Deprecation), ref deprecated)
-                    || reader.TryReadString(nameof(InputModelType.Description), ref description)
-                    || reader.TryReadString(nameof(InputModelType.Usage), ref usageString)
-                    || reader.TryReadWithConverter(nameof(InputModelType.DiscriminatorProperty), options, ref discriminatorProperty)
-                    || reader.TryReadString(nameof(InputModelType.DiscriminatorValue), ref discriminatorValue)
-                    || reader.TryReadWithConverter(nameof(InputModelType.AdditionalProperties), options, ref additionalProperties)
-                    || reader.TryReadWithConverter(nameof(InputModelType.BaseModel), options, ref baseModel)
-                    || reader.TryReadWithConverter(nameof(InputModelType.Properties), options, ref properties)
-                    || reader.TryReadWithConverter(nameof(InputModelType.DiscriminatedSubtypes), options, ref discriminatedSubtypes)
-                    || reader.TryReadBoolean(nameof(InputModelType.ModelAsStruct), ref modelAsStruct)
-                    || reader.TryReadWithConverter(nameof(InputModelType.Decorators), options, ref decorators);
+                var isKnownProperty = reader.TryReadString("name", ref name)
+                    || reader.TryReadString("crossLanguageDefinitionId", ref crossLanguageDefinitionId)
+                    || reader.TryReadString("access", ref accessibility)
+                    || reader.TryReadString("deprecation", ref deprecation)
+                    || reader.TryReadString("summary", ref doc)
+                    || reader.TryReadString("doc", ref doc)
+                    || reader.TryReadString("usage", ref usageString)
+                    || reader.TryReadWithConverter("discriminatorProperty", options, ref discriminatorProperty)
+                    || reader.TryReadString("discriminatorValue", ref discriminatorValue)
+                    || reader.TryReadWithConverter("additionalProperties", options, ref additionalProperties)
+                    || reader.TryReadWithConverter("baseModel", options, ref baseModel)
+                    || reader.TryReadWithConverter("properties", options, ref properties)
+                    || reader.TryReadWithConverter("discriminatedSubtypes", options, ref discriminatedSubtypes)
+                    || reader.TryReadWithConverter("decorators", options, ref decorators)
+                    || reader.TryReadBoolean(nameof(InputModelType.ModelAsStruct), ref modelAsStruct); // TODO -- change this to fetch from the decorator list instead when the decorator is ready
 
                 if (!isKnownProperty)
                 {
@@ -91,8 +94,9 @@ namespace Microsoft.Generator.CSharp.Input
             model.Name = name ?? throw new JsonException("InputModelType must have name");
             model.CrossLanguageDefinitionId = crossLanguageDefinitionId ?? string.Empty;
             model.Access = accessibility;
-            model.Deprecation = deprecated;
-            model.Description = description;
+            model.Deprecation = deprecation;
+            model.Summary = summary;
+            model.Doc = doc;
             var parsedUsage = Enum.TryParse<InputModelTypeUsage>(usageString, ignoreCase: true, out var usage) ? usage : InputModelTypeUsage.None;
             // TO-DO: Manually add JSON usage flag for now until support for parsing this is added to the TSP https://github.com/microsoft/typespec/issues/3392
             parsedUsage |= InputModelTypeUsage.Json;
@@ -108,6 +112,10 @@ namespace Microsoft.Generator.CSharp.Input
             if (discriminatedSubtypes != null)
             {
                 model.DiscriminatedSubtypes = discriminatedSubtypes;
+            }
+            else if (model.DiscriminatorProperty != null)
+            {
+                model.DiscriminatedSubtypes = new Dictionary<string, InputModelType>();
             }
             model.ModelAsStruct = modelAsStruct;
             if (decorators != null)

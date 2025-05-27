@@ -9,8 +9,9 @@ $packageRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
 
 Refresh-Build
 
-$specsDirectory = "$packageRoot/node_modules/@azure-tools/cadl-ranch-specs"
-$cadlRanchRoot = Join-Path $packageRoot 'generator' 'TestProjects' 'CadlRanch'
+$specsDirectory = Join-Path $packageRoot 'node_modules' '@typespec' 'http-specs' 'specs'
+$azureSpecsDirectory = Join-Path $packageRoot 'node_modules' '@azure-tools' 'azure-http-specs' 'specs'
+$cadlRanchRoot = Join-Path $packageRoot 'generator' 'TestProjects' 'CadlRanch' 'http'
 $directories = Get-ChildItem -Path "$cadlRanchRoot" -Directory -Recurse
 $cadlRanchCsproj = Join-Path $packageRoot 'generator' 'TestProjects' 'CadlRanch.Tests' 'TestProjects.CadlRanch.Tests.csproj'
 
@@ -32,10 +33,22 @@ foreach ($directory in $directories) {
     if (-not (Compare-Paths $subPath $filter)) {
         continue
     }
-
+    
+    $testPath = "$cadlRanchRoot.Tests"
     $testFilter = "TestProjects.CadlRanch.Tests"
     foreach ($folder in $folders) {
-        $testFilter += ".$(Get-Namespace $folder)"
+        $segment = "$(Get-Namespace $folder)"
+        
+        # the test directory names match the test namespace names, but the source directory names will not have the leading underscore
+        # so check to see if the filter should contain a leading underscore by comparing with the test directory
+        if (-not (Test-Path (Join-Path $testPath $segment))) {
+          $testFilter += "._$segment"
+          $testPath = Join-Path $testPath "_$segment"
+        }
+        else{
+          $testFilter += ".$segment"
+          $testPath = Join-Path $testPath $segment
+        }
     }
 
     Write-Host "Regenerating $subPath" -ForegroundColor Cyan
@@ -44,9 +57,29 @@ foreach ($directory in $directories) {
     if (-not (Test-Path $specFile)) {
         $specFile = Join-Path $specsDirectory $subPath "main.tsp"
     }
+    if (-not (Test-Path $specFile)) {
+        $specFile = Join-Path $azureSpecsDirectory $subPath "client.tsp"
+    }
+    if (-not (Test-Path $specFile)) {
+        $specFile = Join-Path $azureSpecsDirectory $subPath "main.tsp"
+    }
+    
+    if ($subPath.Contains("versioning")) {
+        if ($subPath.Contains("v1")) {
+            # this will generate v1 and v2 so we only need to call it once for one of the versions
+            Generate-Versioning ($(Join-Path $specsDirectory $subPath) | Split-Path) $($outputDir | Split-Path) -createOutputDirIfNotExist $false
+        }
+    }
+    elseif ($subPath.Contains("srv-driven")) {
+        if ($subPath.Contains("v1")) {
+            Generate-Srv-Driven ($(Join-Path $azureSpecsDirectory $subPath) | Split-Path) $($outputDir | Split-Path) -createOutputDirIfNotExist $false
+        }
+    }
+    else {
+        $command = Get-TspCommand $specFile $outputDir
+        Invoke $command
+    }
 
-    $command = Get-TspCommand $specFile $outputDir
-    Invoke $command
     # exit if the generation failed
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

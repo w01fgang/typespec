@@ -1,5 +1,21 @@
 # Change Log - typespec-vs
 
+## 0.63.0
+
+No changes, version bump only.
+
+## 0.62.0
+
+No changes, version bump only.
+
+## 0.61.0
+
+No changes, version bump only.
+
+## 0.60.0
+
+No changes, version bump only.
+
 ## 0.59.0
 
 ### Bug Fixes

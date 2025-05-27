@@ -8,11 +8,6 @@ namespace Client.Naming.Models
     {
         public LanguageClientNameModel(bool csName) => throw null;
 
-        public bool CSName
-        {
-            get => throw null;
-            set => throw null;
-        }
-
+        public bool CSName => throw null;
     }
 }

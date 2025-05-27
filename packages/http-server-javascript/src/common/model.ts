@@ -8,7 +8,7 @@ import {
   isTemplateInstance,
 } from "@typespec/compiler";
 import { JsContext, Module } from "../ctx.js";
-import { parseCase } from "../util/case.js";
+import { isUnspeakable, parseCase } from "../util/case.js";
 import { indent } from "../util/iter.js";
 import { KEYWORDS } from "../util/keywords.js";
 import { getFullyQualifiedTypeName } from "../util/name.js";
@@ -28,7 +28,7 @@ export function* emitModel(
   ctx: JsContext,
   model: Model,
   module: Module,
-  altName?: string
+  altName?: string,
 ): Iterable<string> {
   const isTemplate = isTemplateInstance(model);
   const friendlyName = getFriendlyName(ctx.program, model);
@@ -43,7 +43,7 @@ export function* emitModel(
       : isTemplate
         ? model.templateMapper!.args.map((a) => ("name" in a ? String(a.name) : "")).join("_") +
           model.name
-        : model.name
+        : model.name,
   );
 
   if (model.name === "" && !altName) {
@@ -61,6 +61,11 @@ export function* emitModel(
   yield `export interface ${ifaceName} ${extendsClause}{`;
 
   for (const field of model.properties.values()) {
+    // Skip properties with unspeakable names.
+    if (isUnspeakable(field.name)) {
+      continue;
+    }
+
     const nameCase = parseCase(field.name);
     const basicName = nameCase.camelCase;
 
@@ -115,7 +120,7 @@ export function emitWellKnownModel(
   ctx: JsContext,
   type: Model,
   module: Module,
-  preferredAlternativeName?: string
+  preferredAlternativeName?: string,
 ): string {
   const arg = type.indexer!.value;
   switch (type.name) {
@@ -128,7 +133,7 @@ export function emitWellKnownModel(
       return asArrayType(
         emitTypeReference(ctx, arg, type, module, {
           altName: preferredAlternativeName && getArrayElementName(preferredAlternativeName),
-        })
+        }),
       );
     }
     default:

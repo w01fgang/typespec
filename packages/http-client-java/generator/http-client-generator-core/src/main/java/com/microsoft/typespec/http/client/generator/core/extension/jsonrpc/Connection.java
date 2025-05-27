@@ -6,7 +6,6 @@ package com.microsoft.typespec.http.client.generator.core.extension.jsonrpc;
 import com.azure.json.JsonProviders;
 import com.azure.json.JsonReader;
 import com.azure.json.JsonWriter;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,7 +51,7 @@ public class Connection {
         this.requestId = new AtomicInteger(0);
     }
 
-    private boolean isAlive = true;
+    private volatile boolean isAlive = true;
 
     /**
      * Stops the connection.
@@ -455,7 +454,8 @@ public class Connection {
 
         String json = (serializedObject == null)
             ? "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"id\":" + id + "}"
-            : "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"id\":" + id + ",\"params\":" + serializedObject + "}";
+            : "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"id\":" + id + ",\"params\":" + serializedObject
+                + "}";
 
         send(json);
         try {

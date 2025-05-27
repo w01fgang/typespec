@@ -4,7 +4,6 @@
 package com.microsoft.typespec.http.client.generator.core.model.clientmodel;
 
 import com.microsoft.typespec.http.client.generator.core.extension.plugin.JavaSettings;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -50,6 +49,7 @@ public class TestContext<TExample> {
     }
 
     public String getTestBaseClassName() {
-        return serviceClients.iterator().next().getInterfaceName() + "TestBase";
+        return serviceClients.stream().filter(c -> !c.isBuilderDisabled()).findFirst().get().getInterfaceName()
+            + "TestBase";
     }
 }

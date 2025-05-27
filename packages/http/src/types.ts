@@ -10,7 +10,7 @@ import {
   Tuple,
   Type,
 } from "@typespec/compiler";
-import { PathOptions, QueryOptions } from "../generated-defs/TypeSpec.Http.js";
+import { CookieOptions, PathOptions, QueryOptions } from "../generated-defs/TypeSpec.Http.js";
 import { HeaderProperty, HttpProperty } from "./http-property.js";
 
 /**
@@ -21,7 +21,6 @@ export type OperationDetails = HttpOperation;
 export type HttpVerb = "get" | "put" | "post" | "patch" | "delete" | "head";
 
 /** @deprecated use Authentication */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type ServiceAuthentication = Authentication;
 
 export interface Authentication {
@@ -259,7 +258,7 @@ export type OperationContainer = Namespace | Interface;
 
 export type OperationVerbSelector = (
   program: Program,
-  operation: Operation
+  operation: Operation,
 ) => HttpVerb | undefined;
 
 export interface OperationParameterOptions {
@@ -287,7 +286,7 @@ export type RouteProducer = (
   operation: Operation,
   parentSegments: string[],
   overloadBase: HttpOperation | undefined,
-  options: RouteOptions
+  options: RouteOptions,
 ) => DiagnosticResult<RouteProducerResult>;
 
 export interface HeaderFieldOptions {
@@ -298,6 +297,11 @@ export interface HeaderFieldOptions {
    * "multi" and "form".
    */
   format?: "csv" | "multi" | "ssv" | "tsv" | "pipes" | "simple" | "form";
+}
+
+export interface CookieParameterOptions extends Required<CookieOptions> {
+  type: "cookie";
+  name: string;
 }
 
 export interface QueryParameterOptions extends Required<Omit<QueryOptions, "format">> {
@@ -314,10 +318,14 @@ export interface PathParameterOptions extends Required<PathOptions> {
 
 export type HttpOperationParameter =
   | HttpOperationHeaderParameter
+  | HttpOperationCookieParameter
   | HttpOperationQueryParameter
   | HttpOperationPathParameter;
 
 export type HttpOperationHeaderParameter = HeaderFieldOptions & {
+  param: ModelProperty;
+};
+export type HttpOperationCookieParameter = CookieParameterOptions & {
   param: ModelProperty;
 };
 export type HttpOperationQueryParameter = QueryParameterOptions & {
@@ -433,7 +441,7 @@ export interface RoutePath {
 
 export interface HttpOperationResponse {
   /** @deprecated use {@link statusCodes} */
-  // eslint-disable-next-line deprecation/deprecation
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   statusCode: StatusCode;
 
   /**

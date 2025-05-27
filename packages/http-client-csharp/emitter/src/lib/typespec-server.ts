@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 import { SdkContext } from "@azure-tools/typespec-client-generator-core";
-import { getDoc } from "@typespec/compiler";
+import { getDoc, getSummary } from "@typespec/compiler";
 import { HttpServer } from "@typespec/http";
 import { getExtensions } from "@typespec/openapi";
 import { NetEmitterOptions } from "../options.js";
@@ -23,7 +23,7 @@ export interface TypeSpecServer {
 export function resolveServers(
   context: SdkContext<NetEmitterOptions>,
   servers: HttpServer[],
-  typeMap: SdkTypeMap
+  typeMap: SdkTypeMap,
 ): TypeSpecServer[] {
   return servers.map((server) => {
     const parameters: InputParameter[] = [];
@@ -35,9 +35,9 @@ export function resolveServers(
       const value = prop.default ? getDefaultValue(prop.default) : "";
       const inputType: InputType = isEndpoint
         ? {
-            Kind: "url",
-            Name: "url",
-            CrossLanguageDefinitionId: "TypeSpec.url",
+            kind: "url",
+            name: "url",
+            crossLanguageDefinitionId: "TypeSpec.url",
           }
         : getInputType(context, prop, typeMap);
 
@@ -50,7 +50,8 @@ export function resolveServers(
       const variable: InputParameter = {
         Name: name,
         NameInRequest: name,
-        Description: getDoc(context.program, prop),
+        Summary: getSummary(context.program, prop),
+        Doc: getDoc(context.program, prop),
         Type: inputType,
         Location: RequestLocation.Uri,
         IsApiVersion: name.toLowerCase() === "apiversion" || name.toLowerCase() === "api-version",
@@ -73,11 +74,11 @@ export function resolveServers(
       const variable: InputParameter = {
         Name: "host",
         NameInRequest: "host",
-        Description: server.description,
+        Doc: server.description,
         Type: {
-          Kind: "string",
-          Name: "string",
-          CrossLanguageDefinitionId: "TypeSpec.string",
+          kind: "string",
+          name: "string",
+          crossLanguageDefinitionId: "TypeSpec.string",
         },
         Location: RequestLocation.Uri,
         IsApiVersion: false,
@@ -90,9 +91,9 @@ export function resolveServers(
         Kind: InputOperationParameterKind.Client,
         DefaultValue: {
           Type: {
-            Kind: "string",
-            Name: "string",
-            CrossLanguageDefinitionId: "TypeSpec.string",
+            kind: "string",
+            name: "string",
+            crossLanguageDefinitionId: "TypeSpec.string",
           },
           Value: server.url,
         } as InputConstant,

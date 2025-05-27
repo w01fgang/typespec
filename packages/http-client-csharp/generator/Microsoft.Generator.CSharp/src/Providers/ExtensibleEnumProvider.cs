@@ -11,6 +11,7 @@ using Microsoft.Generator.CSharp.Input;
 using Microsoft.Generator.CSharp.Primitives;
 using Microsoft.Generator.CSharp.Snippets;
 using Microsoft.Generator.CSharp.Statements;
+using Microsoft.Generator.CSharp.Utilities;
 using static Microsoft.Generator.CSharp.Snippets.Snippet;
 
 namespace Microsoft.Generator.CSharp.Providers
@@ -26,6 +27,7 @@ namespace Microsoft.Generator.CSharp.Providers
             _allowedValues = input.Values;
             // extensible enums are implemented as readonly structs
             _modifiers = TypeSignatureModifiers.Partial | TypeSignatureModifiers.ReadOnly | TypeSignatureModifiers.Struct;
+
             if (input.Accessibility == "internal")
             {
                 _modifiers |= TypeSignatureModifiers.Internal;
@@ -58,7 +60,7 @@ namespace Microsoft.Generator.CSharp.Providers
                     EnumUnderlyingType,
                     name,
                     this,
-                    FormattableStringHelpers.FromString(inputValue.Description),
+                    DocHelpers.GetFormattableDescription(inputValue.Summary, inputValue.Doc),
                     initializationValue);
 
                 values[i] = new EnumTypeMember(valueName, field, inputValue.Value);
@@ -169,7 +171,7 @@ namespace Microsoft.Generator.CSharp.Providers
             // public override bool Equals(object obj) => obj is EnumType other && Equals(other);
             methods.Add(new(
                 equalsSignature,
-                objParameter.AsExpression
+                objParameter
                     .Is(new DeclarationExpression(Type, "other", out var other))
                     .And(This.Invoke(nameof(Equals), [other])),
                 this));
@@ -201,7 +203,8 @@ namespace Microsoft.Generator.CSharp.Providers
                 Modifiers: MethodSignatureModifiers.Public | MethodSignatureModifiers.Override,
                 ReturnType: typeof(int),
                 ReturnDescription: null,
-                Parameters: Array.Empty<ParameterProvider>());
+                Parameters: Array.Empty<ParameterProvider>(),
+                Attributes: [new AttributeStatement(typeof(EditorBrowsableAttribute), FrameworkEnumValue(EditorBrowsableState.Never))]);
 
             // writes the method:
             // for string
@@ -241,7 +244,5 @@ namespace Microsoft.Generator.CSharp.Providers
             return CodeModelPlugin.Instance.TypeFactory.CreateSerializations(_inputType, this).ToArray();
         }
         protected override bool GetIsEnum() => true;
-
-        protected override CSharpType BuildEnumUnderlyingType() => CodeModelPlugin.Instance.TypeFactory.CreatePrimitiveCSharpType(_inputType.ValueType) ?? throw new InvalidOperationException($"Failed to create CSharpType for {_inputType.ValueType}");
     }
 }

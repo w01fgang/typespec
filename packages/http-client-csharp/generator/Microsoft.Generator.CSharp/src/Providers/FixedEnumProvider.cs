@@ -4,10 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.CodeAnalysis;
 using Microsoft.Generator.CSharp.Expressions;
 using Microsoft.Generator.CSharp.Input;
 using Microsoft.Generator.CSharp.Primitives;
+using Microsoft.Generator.CSharp.SourceInput;
+using Microsoft.Generator.CSharp.Utilities;
 using static Microsoft.Generator.CSharp.Snippets.Snippet;
 
 namespace Microsoft.Generator.CSharp.Providers
@@ -26,10 +27,12 @@ namespace Microsoft.Generator.CSharp.Providers
             _allowedValues = input.Values;
             // fixed enums are implemented by enum in C#
             _modifiers = TypeSignatureModifiers.Enum;
+
             if (input.Accessibility == "internal")
             {
                 _modifiers |= TypeSignatureModifiers.Internal;
             }
+
             _isApiVersionEnum = input.Usage.HasFlag(InputModelTypeUsage.ApiVersionEnum);
             DeclaringTypeProvider = declaringType;
         }
@@ -53,6 +56,8 @@ namespace Microsoft.Generator.CSharp.Providers
         // we have to build the values first, because the corresponding fieldDeclaration of the values might need all of the existing values to avoid name conflicts
         protected override IReadOnlyList<EnumTypeMember> BuildEnumValues()
         {
+            var customMembers = new HashSet<FieldProvider>(CustomCodeView?.Fields ?? []);
+
             var values = new EnumTypeMember[_allowedValues.Count];
             for (int i = 0; i < _allowedValues.Count; i++)
             {
@@ -62,6 +67,22 @@ namespace Microsoft.Generator.CSharp.Providers
                 var name = _isApiVersionEnum
                     ? inputValue.Name.ToApiVersionMemberName()
                     : inputValue.Name.ToCleanName();
+
+                // check if the enum member was renamed in custom code
+                string? customMemberName = null;
+                foreach (var customMember in customMembers)
+                {
+                    if (customMember.OriginalName == name)
+                    {
+                        customMemberName = customMember.Name;
+                    }
+                }
+
+                if (customMemberName != null)
+                {
+                    name = customMemberName;
+                }
+
                 // for fixed enum, we only need it for int values, for other value typed fixed enum, we use the serialization extension method to give the values (because assigning them to enum members cannot compile)
                 ValueExpression? initializationValue = null;
                 if (_isApiVersionEnum)
@@ -78,7 +99,7 @@ namespace Microsoft.Generator.CSharp.Providers
                     EnumUnderlyingType,
                     name,
                     this,
-                    inputValue.Description is null ? $"{name}" : FormattableStringHelpers.FromString(inputValue.Description),
+                    DocHelpers.GetFormattableDescription(inputValue.Summary, inputValue.Doc) ?? $"{name}",
                     initializationValue);
 
                 values[i] = new EnumTypeMember(name, field, inputValue.Value);
@@ -90,6 +111,5 @@ namespace Microsoft.Generator.CSharp.Providers
             => EnumValues.Select(v => v.Field).ToArray();
 
         protected override bool GetIsEnum() => true;
-        protected override CSharpType BuildEnumUnderlyingType() => CodeModelPlugin.Instance.TypeFactory.CreatePrimitiveCSharpType(_inputType.ValueType);
     }
 }

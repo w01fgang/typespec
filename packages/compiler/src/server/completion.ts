@@ -6,13 +6,13 @@ import {
   MarkupKind,
   TextEdit,
 } from "vscode-languageserver";
+import { getSymNode } from "../core/binder.js";
 import { getDeprecationDetails } from "../core/deprecation.js";
 import {
   CompilerHost,
   IdentifierNode,
   Node,
   NodeFlags,
-  NodePackage,
   PositionDetail,
   Program,
   StringLiteralNode,
@@ -32,6 +32,7 @@ import {
   hasTrailingDirectorySeparator,
   resolvePath,
 } from "../core/path-utils.js";
+import { PackageJson } from "../types/package-json.js";
 import { findProjectRoot, loadFile, resolveTspMain } from "../utils/misc.js";
 import { getSymbolDetails } from "./type-details.js";
 
@@ -44,7 +45,7 @@ export type CompletionContext = {
 
 export async function resolveCompletion(
   context: CompletionContext,
-  posDetail: PositionDetail
+  posDetail: PositionDetail,
 ): Promise<CompletionList> {
   let node: Node | undefined = posDetail.node;
 
@@ -78,7 +79,7 @@ export async function resolveCompletion(
 
 function addCompletionByLookingBackward(
   posDetail: PositionDetail,
-  context: CompletionContext
+  context: CompletionContext,
 ): boolean {
   if (posDetail.triviaStartPosition === 0) {
     return false;
@@ -96,7 +97,7 @@ function addCompletionByLookingBackward(
       n.kind === SyntaxKind.OperationStatement ||
       n.kind === SyntaxKind.InterfaceStatement ||
       n.kind === SyntaxKind.TemplateParameterDeclaration,
-    true /*includeSelf*/
+    true /*includeSelf*/,
   );
 
   return node !== undefined && addCompletionByLookingBackwardNode(node, posDetail, context);
@@ -105,7 +106,7 @@ function addCompletionByLookingBackward(
 function addCompletionByLookingBackwardNode(
   preNode: Node,
   posDetail: PositionDetail,
-  context: CompletionContext
+  context: CompletionContext,
 ): boolean {
   const getIdentifierEndPos = (n: IdentifierNode) => {
     // n.pos === n.end, it means it's a missing identifier, just return -1;
@@ -151,7 +152,7 @@ async function AddCompletionNonTrivia(
   node: Node | undefined,
   context: CompletionContext,
   posDetail: PositionDetail,
-  lookBackward: boolean = true
+  lookBackward: boolean = true,
 ) {
   if (
     node === undefined ||
@@ -250,7 +251,7 @@ function addKeywordCompletion(area: keyof KeywordArea, completions: CompletionLi
   }
 }
 
-async function loadPackageJson(host: CompilerHost, path: string): Promise<NodePackage> {
+async function loadPackageJson(host: CompilerHost, path: string): Promise<PackageJson> {
   const [libPackageJson] = await loadFile(host, path, JSON.parse, () => {});
   return libPackageJson;
 }
@@ -263,14 +264,14 @@ async function isTspLibraryPackage(host: CompilerHost, dir: string) {
 
 async function addLibraryImportCompletion(
   { program, file, completions }: CompletionContext,
-  node: StringLiteralNode
+  node: StringLiteralNode,
 ) {
   const documentPath = file.file.path;
   const projectRoot = await findProjectRoot(program.host.stat, documentPath);
   if (projectRoot !== undefined) {
     const packagejson = await loadPackageJson(
       program.host,
-      resolvePath(projectRoot, "package.json")
+      resolvePath(projectRoot, "package.json"),
     );
     let dependencies: string[] = [];
     if (packagejson.dependencies !== undefined) {
@@ -317,7 +318,7 @@ async function tryListItemInDir(host: CompilerHost, path: string): Promise<strin
 
 async function addRelativePathCompletion(
   { program, completions, file }: CompletionContext,
-  node: StringLiteralNode
+  node: StringLiteralNode,
 ) {
   const documentPath = file.file.path;
   const documentFile = getBaseFileName(documentPath);
@@ -327,7 +328,7 @@ async function addRelativePathCompletion(
     : getDirectoryPath(node.value);
   const currentAbsolutePath = resolvePath(documentDir, currentRelativePath);
   const files = (await tryListItemInDir(program.host, currentAbsolutePath)).filter(
-    (x) => x !== documentFile && x !== "node_modules"
+    (x) => x !== documentFile && x !== "node_modules",
   );
 
   const lastSlash = node.value.lastIndexOf("/");
@@ -401,7 +402,7 @@ function addModelCompletion(context: CompletionContext, posDetail: PositionDetai
  */
 function addIdentifierCompletion(
   { program, completions }: CompletionContext,
-  node: IdentifierNode
+  node: IdentifierNode,
 ) {
   const result = program.checker.resolveCompletions(node);
   if (result.size === 0) {
@@ -410,17 +411,15 @@ function addIdentifierCompletion(
   for (const [key, { sym, label, suffix }] of result) {
     let kind: CompletionItemKind;
     let deprecated = false;
-    const type = sym.type ?? program.checker.getTypeForNode(sym.declarations[0]);
+    const node = getSymNode(sym);
+    const type = sym.type ?? program.checker.getTypeForNode(node);
     if (sym.flags & (SymbolFlags.Function | SymbolFlags.Decorator)) {
       kind = CompletionItemKind.Function;
-    } else if (
-      sym.flags & SymbolFlags.Namespace &&
-      sym.declarations[0].kind !== SyntaxKind.NamespaceStatement
-    ) {
+    } else if (sym.flags & SymbolFlags.Namespace && node.kind !== SyntaxKind.NamespaceStatement) {
       kind = CompletionItemKind.Module;
-    } else if (sym.declarations[0]?.kind === SyntaxKind.AliasStatement) {
+    } else if (node?.kind === SyntaxKind.AliasStatement) {
       kind = CompletionItemKind.Variable;
-      deprecated = getDeprecationDetails(program, sym.declarations[0]) !== undefined;
+      deprecated = getDeprecationDetails(program, node) !== undefined;
     } else {
       kind = getCompletionItemKind(program, type);
       deprecated = getDeprecationDetails(program, type) !== undefined;

@@ -1,14 +1,10 @@
 import { Parameter } from "@autorest/codemodel";
-import { LroMetadata } from "@azure-tools/typespec-azure-core";
-import { SdkHttpOperation } from "@azure-tools/typespec-client-generator-core";
-import { ModelProperty, Operation, Program, Type, Union } from "@typespec/compiler";
 import {
-  HttpOperation,
-  getHeaderFieldName,
-  getPathParamName,
-  getQueryParamName,
-  isStatusCode,
-} from "@typespec/http";
+  SdkHttpOperation,
+  SdkLroServiceMetadata,
+} from "@azure-tools/typespec-client-generator-core";
+import { getVisibility, ModelProperty, Operation, Program, Type, Union } from "@typespec/compiler";
+import { HttpOperation, isMetadata } from "@typespec/http";
 import { Client as CodeModelClient, ServiceVersion } from "./common/client.js";
 import { CodeModel } from "./common/code-model.js";
 import { modelIs, unionReferredByType } from "./type-utils.js";
@@ -74,7 +70,7 @@ export function operationIsMultipleContentTypes(op: SdkHttpOperation): boolean {
       (parameter) =>
         parameter.kind === "header" &&
         parameter.serializedName.toLowerCase() === CONTENT_TYPE_KEY &&
-        parameter.type.kind === "enum"
+        parameter.type.kind === "enum",
     )
   ) {
     return true;
@@ -85,7 +81,7 @@ export function operationIsMultipleContentTypes(op: SdkHttpOperation): boolean {
 export function operationRefersUnion(
   program: Program,
   op: HttpOperation,
-  cache: Map<Type, Union | null | undefined>
+  cache: Map<Type, Union | null | undefined>,
 ): Union | null {
   // request parameters
   for (const parameter of op.parameters.parameters) {
@@ -119,15 +115,8 @@ export function operationRefersUnion(
   return null;
 }
 
-export function isPayloadProperty(program: Program, property: ModelProperty | undefined): boolean {
-  if (property === undefined) {
-    return false;
-  }
-  const headerInfo = getHeaderFieldName(program, property);
-  const queryInfo = getQueryParamName(program, property);
-  const pathInfo = getPathParamName(program, property);
-  const statusCodeInfo = isStatusCode(program, property);
-  return !(headerInfo || queryInfo || pathInfo || statusCodeInfo);
+export function isPayloadProperty(program: Program, property: ModelProperty): boolean {
+  return !isMetadata(program, property) && !getVisibility(program, property)?.includes("none");
 }
 
 export function getServiceVersion(client: CodeModelClient | CodeModel): ServiceVersion {
@@ -148,28 +137,26 @@ export function getServiceVersion(client: CodeModelClient | CodeModel): ServiceV
 }
 
 export function isLroNewPollingStrategy(
-  httpOperation: HttpOperation,
-  lroMetadata: LroMetadata
+  operation: SdkHttpOperation,
+  lroMetadata: SdkLroServiceMetadata,
 ): boolean {
-  const operation = httpOperation.operation;
   let useNewStrategy = false;
   if (
-    lroMetadata.pollingInfo &&
-    lroMetadata.statusMonitorStep &&
-    modelIs(lroMetadata.pollingInfo.responseModel, "OperationStatus", "Azure.Core.Foundations")
+    lroMetadata.pollingStep.responseBody &&
+    modelIs(lroMetadata.pollingStep.responseBody, "OperationStatus", "Azure.Core.Foundations")
   ) {
     useNewStrategy = operationIs(operation, undefined, "Azure.Core");
   }
 
   if (!useNewStrategy) {
     // LroMetadata: following 2 pattern in LroMetadata requires new polling strategy, regardless whether they uses Azure.Core template
-    if (httpOperation.verb === "put" && !lroMetadata.finalStep) {
+    if (operation.verb === "put" && !lroMetadata.finalStep) {
       // PUT without last GET on resource
       useNewStrategy = true;
     } else if (
       lroMetadata.finalStep &&
       lroMetadata.finalStep.kind === "pollingSuccessProperty" &&
-      lroMetadata.finalStep.target
+      lroMetadata.finalResponse?.resultPath
     ) {
       // final result is the value in lroMetadata.finalStep.target
       useNewStrategy = true;
@@ -196,12 +183,16 @@ export function cloneOperationParameter(parameter: Parameter): Parameter {
       required: parameter.required,
       nullable: parameter.nullable,
       extensions: parameter.extensions,
-    }
+    },
   );
 }
 
-function operationIs(operation: Operation, name: string | undefined, namespace: string): boolean {
-  let currentOp: Operation | undefined = operation;
+function operationIs(
+  operation: SdkHttpOperation,
+  name: string | undefined,
+  namespace: string,
+): boolean {
+  let currentOp: Operation | undefined = operation.__raw.operation;
   while (currentOp) {
     if ((!name || currentOp.name === name) && getNamespace(currentOp) === namespace) {
       return true;

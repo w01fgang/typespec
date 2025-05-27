@@ -14,7 +14,8 @@ namespace Microsoft.Generator.CSharp.Input
         public InputOperation(
             string name,
             string? resourceName,
-            string description,
+            string? summary,
+            string? doc,
             string? deprecated,
             string? accessibility,
             IReadOnlyList<InputParameter> parameters,
@@ -34,7 +35,8 @@ namespace Microsoft.Generator.CSharp.Input
         {
             Name = name;
             ResourceName = resourceName;
-            Description = description;
+            Summary = summary;
+            Doc = doc;
             Deprecated = deprecated;
             Accessibility = accessibility;
             Parameters = parameters;
@@ -56,7 +58,8 @@ namespace Microsoft.Generator.CSharp.Input
         public InputOperation() : this(
             name: string.Empty,
             resourceName: null,
-            description: string.Empty,
+            summary: string.Empty,
+            doc: string.Empty,
             deprecated: null,
             accessibility: null,
             parameters: Array.Empty<InputParameter>(),
@@ -77,7 +80,8 @@ namespace Microsoft.Generator.CSharp.Input
 
         public string Name { get; internal set; }
         public string? ResourceName { get; internal set; }
-        public string Description { get; internal set; }
+        public string? Summary { get; internal set; }
+        public string? Doc { get; internal set; }
         public string? Deprecated { get; internal set; }
         public string? Accessibility { get; internal set; }
         public IReadOnlyList<InputParameter> Parameters { get; internal set; }
@@ -107,5 +111,8 @@ namespace Microsoft.Generator.CSharp.Input
                 [ExampleMockValueBuilder.MockExampleAllParameterKey] = ExampleMockValueBuilder.BuildOperationExample(this, true)
             };
         }
+
+        private bool? _isMultipartFormData;
+        public bool IsMultipartFormData => _isMultipartFormData ??= RequestMediaTypes is not null && RequestMediaTypes.Count == 1 && RequestMediaTypes[0] == "multipart/form-data";
     }
 }

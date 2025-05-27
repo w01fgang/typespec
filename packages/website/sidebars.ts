@@ -5,7 +5,7 @@ function createLibraryReferenceStructure(
   libDir: string,
   labelName: string,
   hasLinterRules: boolean,
-  extra: SidebarItemConfig[]
+  extra: SidebarItemConfig[],
 ): SidebarItemConfig {
   const rules: SidebarItemConfig = {
     type: "category",
@@ -121,6 +121,7 @@ const sidebars: SidebarsConfig = {
         },
         "standard-library/discriminated-types",
         "standard-library/examples",
+        "standard-library/pagination",
       ],
     },
     {

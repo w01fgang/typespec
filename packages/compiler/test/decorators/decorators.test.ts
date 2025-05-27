@@ -1,14 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "assert";
 import { beforeEach, describe, it } from "vitest";
-import {
-  Model,
-  ModelProperty,
-  Namespace,
-  Operation,
-  Scalar,
-  getVisibility,
-  isSecret,
-} from "../../src/index.js";
+import { Model, ModelProperty, Namespace, Operation, Scalar, isSecret } from "../../src/index.js";
 import {
   getDoc,
   getEncode,
@@ -47,7 +39,7 @@ describe("compiler: built-in decorators", () => {
         namespace TestDoc.Foo;
 
         model A {}
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, Foo), "doc for namespace Foo");
@@ -61,7 +53,7 @@ describe("compiler: built-in decorators", () => {
         namespace TestDoc.Foo {
            model A {}
         }
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, Foo), "doc for namespace Foo");
@@ -79,7 +71,7 @@ describe("compiler: built-in decorators", () => {
             model A {};
           }
         }
-        `
+        `,
       );
 
       const Bar = (Foo as Namespace).namespaces.get("Bar")!;
@@ -98,7 +90,7 @@ describe("compiler: built-in decorators", () => {
         namespace Bar {
           model A {}
         }
-        `
+        `,
       );
 
       const Bar = (Foo as Namespace).namespaces.get("Bar")!;
@@ -114,7 +106,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @doc("My Doc")
         model A { }
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, A), "My Doc");
@@ -134,7 +126,7 @@ describe("compiler: built-in decorators", () => {
         @test
         model B is Template<B> {
         }
-        `
+        `,
       );
       strictEqual(getDoc(runner.program, A), "Model A");
       strictEqual(getDoc(runner.program, B), "Templated B");
@@ -147,7 +139,7 @@ describe("compiler: built-in decorators", () => {
         @doc("doc for namespace")
         namespace Foo.TestDoc {
         }
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, TestDoc), "doc for namespace");
@@ -163,7 +155,7 @@ describe("compiler: built-in decorators", () => {
           @doc("doc for enum element")
           Red: "red",
         }
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, Color), "doc for enum");
@@ -179,7 +171,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @doc("doc for union")
         union AB { a: A, b: B }
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, AB), "doc for union");
@@ -195,7 +187,7 @@ describe("compiler: built-in decorators", () => {
           @doc("doc for interface operation")
           a(): string;
         }
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, TestDoc), "doc for interface");
@@ -208,7 +200,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @doc("doc for an operation")
         op b(): string;
-        `
+        `,
       );
 
       strictEqual(getDoc(runner.program, b), "doc for an operation");
@@ -233,7 +225,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @pattern("^[a-z]+$")
         scalar A extends string;
-        `
+        `,
       )) as { A: Scalar };
 
       strictEqual(getPattern(runner.program, A), "^[a-z]+$");
@@ -248,7 +240,7 @@ describe("compiler: built-in decorators", () => {
           @pattern("^[a-z]+$")
           prop: string;
         }
-        `
+        `,
       )) as { A: Model };
 
       const prop = A.properties.get("prop") as ModelProperty;
@@ -269,6 +261,19 @@ describe("compiler: built-in decorators", () => {
       });
     });
 
+    it("emit diagnostic if pattern is not a valid RegEx", async () => {
+      const diagnostics = await runner.diagnose(`
+        model A {
+          @pattern("[a-z")
+          prop: string;
+        }
+      `);
+
+      expectDiagnostics(diagnostics, {
+        code: "invalid-pattern-regex",
+      });
+    });
+
     it("optionally allows specifying a pattern validation message", async () => {
       const { A, B } = (await runner.compile(
         `
@@ -279,7 +284,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @pattern("^[a-z]+$")
         scalar B extends string;
-        `
+        `,
       )) as { A: Scalar; B: Scalar };
 
       const pattern = getPattern(runner.program, A);
@@ -303,7 +308,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @returnsDoc("A string")
         op test(): string;
-        `
+        `,
       )) as { test: Operation };
 
       strictEqual(getReturnsDoc(runner.program, test), "A string");
@@ -329,7 +334,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @errorsDoc("An error")
         op test(): string;
-        `
+        `,
       )) as { test: Operation };
 
       strictEqual(getErrorsDoc(runner.program, test), "An error");
@@ -412,7 +417,7 @@ describe("compiler: built-in decorators", () => {
       strictEqual(diagnostics[0].code, "decorator-wrong-target");
       strictEqual(
         diagnostics[0].message,
-        `Cannot apply @error decorator to A since it is not assignable to Model`
+        `Cannot apply @error decorator to A since it is not assignable to Model`,
       );
     });
   });
@@ -519,7 +524,7 @@ describe("compiler: built-in decorators", () => {
         `model M {
           @key(4)
           prop: string;
-        }`
+        }`,
       );
 
       expectDiagnostics(diagnostics, [
@@ -532,7 +537,7 @@ describe("compiler: built-in decorators", () => {
     it("emits diagnostic when not applied to model property", async () => {
       const diagnostics = await runner.diagnose(
         `@key
-        model M {}`
+        model M {}`,
       );
 
       expectDiagnostics(diagnostics, [
@@ -549,7 +554,7 @@ describe("compiler: built-in decorators", () => {
           @test
           @key
           prop: string;
-        }`
+        }`,
       );
 
       strictEqual(prop.kind, "ModelProperty" as const);
@@ -562,11 +567,22 @@ describe("compiler: built-in decorators", () => {
           @test
           @key("alternateName")
           prop: string;
-        }`
+        }`,
       );
 
       strictEqual(prop.kind, "ModelProperty" as const);
       strictEqual(getKeyName(runner.program, prop), "alternateName");
+    });
+
+    it("getKeyName returns undefined if used on property not annotated with @key", async () => {
+      const { prop } = await runner.compile(
+        `model M {
+          @test prop: string;
+        }`,
+      );
+
+      strictEqual(prop.kind, "ModelProperty" as const);
+      strictEqual(getKeyName(runner.program, prop), undefined);
     });
 
     it("emits diagnostic when key property is marked as optional", async () => {
@@ -574,7 +590,7 @@ describe("compiler: built-in decorators", () => {
         `model M {
           @key
           prop?: string;
-        }`
+        }`,
       );
 
       expectDiagnostics(diagnostics, [
@@ -792,7 +808,7 @@ describe("compiler: built-in decorators", () => {
 
         @test
         model TestModel is OmitProperties<OriginalModel, "removeMe"> {
-        }`
+        }`,
       );
 
       const properties = TestModel.kind === "Model" ? Array.from(TestModel.properties.keys()) : [];
@@ -810,7 +826,7 @@ describe("compiler: built-in decorators", () => {
 
         @test
         model TestModel is OmitProperties<OriginalModel, "removeMe" | "removeMeToo"> {
-        }`
+        }`,
       );
 
       const properties = TestModel.kind === "Model" ? Array.from(TestModel.properties.keys()) : [];
@@ -829,7 +845,7 @@ describe("compiler: built-in decorators", () => {
 
         @test
         model TestModel is PickProperties<OriginalModel, "pickMe"> {
-        }`
+        }`,
       );
 
       const properties = TestModel.kind === "Model" ? Array.from(TestModel.properties.keys()) : [];
@@ -847,49 +863,11 @@ describe("compiler: built-in decorators", () => {
 
         @test
         model TestModel is PickProperties<OriginalModel, "pickMe" | "pickMeToo"> {
-        }`
+        }`,
       );
 
       const properties = TestModel.kind === "Model" ? Array.from(TestModel.properties.keys()) : [];
       deepStrictEqual(properties, ["pickMe", "pickMeToo"]);
-    });
-  });
-
-  describe("@withDefaultKeyVisibility", () => {
-    it("sets the default visibility on a key property when not already present", async () => {
-      const { TestModel } = (await runner.compile(
-        `
-        model OriginalModel {
-          @key
-          name: string;
-        }
-
-        @test
-        model TestModel is DefaultKeyVisibility<OriginalModel, "read"> {
-        } `
-      )) as { TestModel: Model };
-
-      deepStrictEqual(getVisibility(runner.program, TestModel.properties.get("name")!), ["read"]);
-    });
-
-    it("allows visibility applied to a key property to override the default", async () => {
-      const { TestModel } = (await runner.compile(
-        `
-        model OriginalModel {
-          @key
-          @visibility("read", "update")
-          name: string;
-        }
-
-        @test
-        model TestModel is DefaultKeyVisibility<OriginalModel, "create"> {
-        } `
-      )) as { TestModel: Model };
-
-      deepStrictEqual(getVisibility(runner.program, TestModel.properties.get("name")!), [
-        "read",
-        "update",
-      ]);
     });
   });
 
@@ -1121,7 +1099,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @secret
         scalar A extends string;
-        `
+        `,
       );
 
       ok(isSecret(runner.program, A));
@@ -1135,7 +1113,7 @@ describe("compiler: built-in decorators", () => {
           @secret
           a: string;
         }
-        `
+        `,
       )) as { A: Model };
 
       ok(isSecret(runner.program, A.properties.get("a")!));
@@ -1151,7 +1129,7 @@ describe("compiler: built-in decorators", () => {
           @secret
           a: CustomStr;
         }
-        `
+        `,
       )) as { A: Model };
 
       ok(isSecret(runner.program, A.properties.get("a")!));
@@ -1163,7 +1141,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @secret
         model A {}
-        `
+        `,
       );
 
       expectDiagnostics(diagnostics, {
@@ -1179,7 +1157,7 @@ describe("compiler: built-in decorators", () => {
         @test
         @secret
         scalar A extends int32;
-        `
+        `,
       );
 
       expectDiagnostics(diagnostics, {
@@ -1197,7 +1175,7 @@ describe("compiler: built-in decorators", () => {
           @secret
           a: int32;
         }
-        `
+        `,
       );
 
       expectDiagnostics(diagnostics, {
@@ -1356,7 +1334,7 @@ describe("compiler: built-in decorators", () => {
       strictEqual(resolveEncodedName(runner.program, expireAt, "application/json"), "exp");
       strictEqual(
         resolveEncodedName(runner.program, expireAt, "application/merge-patch+json"),
-        "exp"
+        "exp",
       );
     });
 

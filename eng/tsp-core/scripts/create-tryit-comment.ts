@@ -11,6 +11,7 @@ async function main() {
   const repo = process.env["BUILD_REPOSITORY_ID"];
   const prNumber = process.env["SYSTEM_PULLREQUEST_PULLREQUESTNUMBER"];
   const ghToken = process.env.GH_TOKEN;
+  const vscodeDownloadUrl = process.env.VSCODE_DOWNLOAD_URL;
   if (repo === undefined) {
     throw new Error("BUILD_REPOSITORY_ID environment variable is not set");
   }
@@ -33,17 +34,24 @@ async function main() {
     return;
   }
 
-  const comment = makeComment(folderName, prNumber);
+  const comment = makeComment(folderName, prNumber, vscodeDownloadUrl);
   await writeComment(repo, prNumber, comment, ghAuth);
 }
 
-function makeComment(folderName: string, prNumber: string): string {
+function makeComment(
+  folderName: string,
+  prNumber: string,
+  vscodeDownloadUrl: string | undefined,
+): string {
   const links = [
     `[🛝 Playground]( https://cadlplayground.z22.web.core.windows.net${folderName}/prs/${prNumber}/)`,
     `[🌐 Website](https://tspwebsitepr.z22.web.core.windows.net${folderName}/prs/${prNumber}/)`,
     `[📚 Next docs](https://tspwebsitepr.z22.web.core.windows.net${folderName}/prs/${prNumber}/docs/next.html)`,
   ];
 
+  if (vscodeDownloadUrl) {
+    links.push(`[🛝 VSCode Extension]( ${vscodeDownloadUrl})`);
+  }
   return [
     `<!-- ${TRY_ID_COMMENT_IDENTIFIER} -->`,
     `You can try these changes here`,
@@ -88,5 +96,8 @@ async function request(method: string, url: string, data: any): Promise<string> 
     body: data.body,
   });
 
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.statusText}\n\n` + (await response.text()));
+  }
   return response.text();
 }

@@ -94,11 +94,11 @@ function createScalarsMap(program: Program): Map<Scalar, string> {
 
   for (const [[type, diagnostics]] of entries) {
     if (!type) {
-      const diagnosticString = diagnostics.map(formatDiagnostic).join("\n");
+      const diagnosticString = diagnostics.map((x) => formatDiagnostic(x)).join("\n");
       throw new Error(`failed to construct TypeSpec -> JavaScript scalar map: ${diagnosticString}`);
     } else if (type.kind !== "Scalar") {
       throw new Error(
-        `type ${(type as any).name ?? "<anonymous>"} is a '${type.kind}', expected 'scalar'`
+        `type ${(type as any).name ?? "<anonymous>"} is a '${type.kind}', expected 'scalar'`,
       );
     }
   }
@@ -121,7 +121,7 @@ function createScalarsMap(program: Program): Map<Scalar, string> {
 export function getJsScalar(
   program: Program,
   scalar: Scalar,
-  diagnosticTarget: DiagnosticTarget | typeof NoTarget
+  diagnosticTarget: DiagnosticTarget | typeof NoTarget,
 ): string {
   const scalars = getScalarsMap(program);
 

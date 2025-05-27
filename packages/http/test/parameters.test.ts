@@ -210,11 +210,12 @@ it("resolves unannotated path parameters that are included in the route path", a
 describe("emit diagnostics when using metadata decorator in @body", () => {
   it.each([
     ["@header", "id: string"],
+    ["@cookie", "id: string"],
     ["@query", "id: string"],
     ["@path", "id: string"],
   ])("%s", async (dec, prop) => {
     const [_, diagnostics] = await compileOperations(
-      `op read(@body explicit: {${dec} ${prop}, other: string}): void;`
+      `op read(@body explicit: {${dec} ${prop}, other: string}): void;`,
     );
     expectDiagnostics(diagnostics, { code: "@typespec/http/metadata-ignored" });
   });

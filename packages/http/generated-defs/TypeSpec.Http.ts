@@ -7,6 +7,10 @@ import type {
   Type,
 } from "@typespec/compiler";
 
+export interface CookieOptions {
+  readonly name?: string;
+}
+
 export interface QueryOptions {
   readonly name?: string;
   readonly explode?: boolean;
@@ -70,7 +74,30 @@ export type BodyDecorator = (context: DecoratorContext, target: ModelProperty) =
 export type HeaderDecorator = (
   context: DecoratorContext,
   target: ModelProperty,
-  headerNameOrOptions?: Type
+  headerNameOrOptions?: Type,
+) => void;
+
+/**
+ * Specify this property is to be sent or received in the cookie.
+ *
+ * @param cookieNameOrOptions Optional name of the cookie in the cookie or cookie options.
+ * By default the cookie name will be the property name converted from camelCase to snake_case. (e.g. `authToken` -> `auth_token`)
+ * @example
+ * ```typespec
+ * op read(@cookie token: string): {data: string[]};
+ * op create(@cookie({name: "auth_token"}) data: string[]): void;
+ * ```
+ * @example Implicit header name
+ *
+ * ```typespec
+ * op read(): {@cookie authToken: string}; // headerName: auth_token
+ * op update(@cookie AuthToken: string): void; // headerName: auth_token
+ * ```
+ */
+export type CookieDecorator = (
+  context: DecoratorContext,
+  target: ModelProperty,
+  cookieNameOrOptions?: string | CookieOptions,
 ) => void;
 
 /**
@@ -86,7 +113,7 @@ export type HeaderDecorator = (
 export type QueryDecorator = (
   context: DecoratorContext,
   target: ModelProperty,
-  queryNameOrOptions?: string | QueryOptions
+  queryNameOrOptions?: string | QueryOptions,
 ) => void;
 
 /**
@@ -102,7 +129,7 @@ export type QueryDecorator = (
 export type PathDecorator = (
   context: DecoratorContext,
   target: ModelProperty,
-  paramNameOrOptions?: string | PathOptions
+  paramNameOrOptions?: string | PathOptions,
 ) => void;
 
 /**
@@ -215,6 +242,13 @@ export type HeadDecorator = (context: DecoratorContext, target: Operation) => vo
  * @example
  * ```typespec
  * @service
+ * @server("https://example.com")
+ * namespace PetStore;
+ * ```
+ * @example With a description
+ *
+ * ```typespec
+ * @service
  * @server("https://example.com", "Single server endpoint")
  * namespace PetStore;
  * ```
@@ -240,8 +274,8 @@ export type ServerDecorator = (
   context: DecoratorContext,
   target: Namespace,
   url: string,
-  description: string,
-  parameters?: Type
+  description?: string,
+  parameters?: Type,
 ) => void;
 
 /**
@@ -258,7 +292,7 @@ export type ServerDecorator = (
 export type UseAuthDecorator = (
   context: DecoratorContext,
   target: Namespace | Interface | Operation,
-  auth: Type
+  auth: Type,
 ) => void;
 
 /**
@@ -269,7 +303,7 @@ export type UseAuthDecorator = (
 export type IncludeInapplicableMetadataInPayloadDecorator = (
   context: DecoratorContext,
   target: Type,
-  value: boolean
+  value: boolean,
 ) => void;
 
 /**
@@ -298,7 +332,7 @@ export type RouteDecorator = (
   context: DecoratorContext,
   target: Namespace | Interface | Operation,
   path: string,
-  options?: Type
+  options?: Type,
 ) => void;
 
 /**
@@ -321,6 +355,7 @@ export type TypeSpecHttpDecorators = {
   statusCode: StatusCodeDecorator;
   body: BodyDecorator;
   header: HeaderDecorator;
+  cookie: CookieDecorator;
   query: QueryDecorator;
   path: PathDecorator;
   bodyRoot: BodyRootDecorator;

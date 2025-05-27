@@ -9,8 +9,8 @@ using Microsoft.Generator.CSharp.Expressions;
 using Microsoft.Generator.CSharp.Input;
 using Microsoft.Generator.CSharp.Primitives;
 using Microsoft.Generator.CSharp.Providers;
+using Microsoft.Generator.CSharp.Utilities;
 using static Microsoft.Generator.CSharp.Snippets.Snippet;
-using System.ClientModel.Primitives;
 
 namespace Microsoft.Generator.CSharp.ClientModel.Providers
 {
@@ -43,6 +43,7 @@ namespace Microsoft.Generator.CSharp.ClientModel.Providers
             }
         }
 
+        internal PropertyProvider? VersionProperty => _versionProperty;
         private TypeProvider? ServiceVersionEnum => _serviceVersionEnum?.Value;
         private FieldProvider? LatestVersionField => _latestVersionField ??= BuildLatestVersionField();
 
@@ -65,7 +66,7 @@ namespace Microsoft.Generator.CSharp.ClientModel.Providers
 
         protected override CSharpType[] BuildImplements()
         {
-            return [typeof(ClientPipelineOptions)];
+            return [ClientModelPlugin.Instance.TypeFactory.ClientPipelineApi.ClientPipelineOptionsType];
         }
 
         protected override FieldProvider[] BuildFields()
@@ -121,12 +122,13 @@ namespace Microsoft.Generator.CSharp.ClientModel.Providers
 
             foreach (var p in _inputClient.Parameters)
             {
-                if (!p.IsEndpoint && p.DefaultValue != null)
+                if (!p.IsEndpoint && !p.IsApiVersion && p.DefaultValue != null)
                 {
                     FormattableString? description = null;
-                    if (p.Description != null)
+                    var parameterDescription = DocHelpers.GetDescription(p.Summary, p.Doc);
+                    if (parameterDescription is not null)
                     {
-                        description = $"{p.Description}";
+                        description = $"{parameterDescription}";
                     }
 
                     var type = ClientModelPlugin.Instance.TypeFactory.CreateCSharpType(p.Type)?.PropertyInitializationType;

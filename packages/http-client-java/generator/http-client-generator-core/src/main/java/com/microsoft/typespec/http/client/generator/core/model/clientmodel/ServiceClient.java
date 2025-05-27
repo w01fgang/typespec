@@ -3,9 +3,10 @@
 
 package com.microsoft.typespec.http.client.generator.core.model.clientmodel;
 
+import com.azure.core.http.policy.UserAgentPolicy;
 import com.microsoft.typespec.http.client.generator.core.extension.plugin.JavaSettings;
 import com.microsoft.typespec.http.client.generator.core.util.ClientModelUtil;
-
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -81,8 +82,14 @@ public class ServiceClient {
 
     private PipelinePolicyDetails pipelinePolicyDetails;
 
+    private List<ClientAccessorMethod> clientAccessorMethods;
+    private ServiceClient parentClient;
+    private AsyncSyncClient asyncClient;
+    private AsyncSyncClient syncClient;
+
     /**
      * Create a new ServiceClient with the provided properties.
+     * 
      * @param packageName The package that this service client belongs to.
      * @param className The name of the client's class.
      * @param interfaceName The name of the client's interface.
@@ -97,9 +104,15 @@ public class ServiceClient {
      * @param serializerAdapterParameter The SerializerAdapter parameter.
      * @param defaultPollIntervalParameter The default poll interval parameter.
      */
-    protected ServiceClient(String packageName, String className, String interfaceName, Proxy proxy, List<MethodGroupClient> methodGroupClients, List<ServiceClientProperty> properties, List<Constructor> constructors, List<ClientMethod> clientMethods,
-                            ClientMethodParameter azureEnvironmentParameter, ClientMethodParameter tokenCredentialParameter, ClientMethodParameter httpPipelineParameter, ClientMethodParameter serializerAdapterParameter, ClientMethodParameter defaultPollIntervalParameter, String defaultCredentialScopes,
-                            boolean builderDisabled, String builderPackageName, SecurityInfo securityInfo, String baseUrl, PipelinePolicyDetails pipelinePolicyDetails, String crossLanguageDefinitionId) {
+    protected ServiceClient(String packageName, String className, String interfaceName, Proxy proxy,
+        List<MethodGroupClient> methodGroupClients, List<ServiceClientProperty> properties,
+        List<Constructor> constructors, List<ClientMethod> clientMethods,
+        ClientMethodParameter azureEnvironmentParameter, ClientMethodParameter tokenCredentialParameter,
+        ClientMethodParameter httpPipelineParameter, ClientMethodParameter serializerAdapterParameter,
+        ClientMethodParameter defaultPollIntervalParameter, String defaultCredentialScopes, boolean builderDisabled,
+        String builderPackageName, SecurityInfo securityInfo, String baseUrl,
+        PipelinePolicyDetails pipelinePolicyDetails, List<ClientAccessorMethod> clientAccessorMethods,
+        String crossLanguageDefinitionId) {
         this.packageName = packageName;
         this.className = className;
         this.interfaceName = interfaceName;
@@ -120,6 +133,7 @@ public class ServiceClient {
         this.securityInfo = securityInfo;
         this.baseUrl = baseUrl;
         this.pipelinePolicyDetails = pipelinePolicyDetails;
+        this.clientAccessorMethods = clientAccessorMethods;
         this.crossLanguageDefinitionId = crossLanguageDefinitionId;
     }
 
@@ -217,19 +231,73 @@ public class ServiceClient {
         return pipelinePolicyDetails;
     }
 
+    /**
+     * Gets the list of client accessor methods.
+     *
+     * @return the list of client accessor methods
+     */
+    public List<ClientAccessorMethod> getClientAccessorMethods() {
+        return clientAccessorMethods;
+    }
+
+    /**
+     * Gets the parent class.
+     *
+     * @return the parent class
+     */
+    public ServiceClient getParentClient() {
+        return parentClient;
+    }
+
+    // Use a setter instead of builder, to avoid circular reference during build,
+    // as ServiceClient already refers to sub client via ClientAccessorMethod.
+    /**
+     * Sets the parent class.
+     *
+     * @param parentClient the parent class
+     */
+    public void setParentClient(ServiceClient parentClient) {
+        this.parentClient = parentClient;
+    }
+
+    public AsyncSyncClient getAsyncClient() {
+        return asyncClient;
+    }
+
+    public void setAsyncClient(AsyncSyncClient asyncClient) {
+        this.asyncClient = asyncClient;
+    }
+
+    public AsyncSyncClient getSyncClient() {
+        return syncClient;
+    }
+
+    public void setSyncClient(AsyncSyncClient syncClient) {
+        this.syncClient = syncClient;
+    }
+
     public String getCrossLanguageDefinitionId() {
         return crossLanguageDefinitionId;
     }
 
     /**
      * Add this property's imports to the provided set of imports.
+     * 
      * @param imports The set of imports to add to.
-     * @param includeImplementationImports Whether to include imports that are only necessary for method implementations.
+     * @param includeImplementationImports Whether to include imports that are only necessary for method
+     * implementations.
      */
-    public final void addImportsTo(Set<String> imports, boolean includeImplementationImports, boolean includeBuilderImports, JavaSettings settings) {
+    public final void addImportsTo(Set<String> imports, boolean includeImplementationImports,
+        boolean includeBuilderImports, JavaSettings settings) {
         if (!includeBuilderImports) {
             for (ClientMethod clientMethod : getClientMethods()) {
                 clientMethod.addImportsTo(imports, includeImplementationImports, settings);
+            }
+        }
+
+        if (includeImplementationImports) {
+            for (ClientAccessorMethod clientAccessorMethod : getClientAccessorMethods()) {
+                clientAccessorMethod.addImportsTo(imports, false);
             }
         }
 
@@ -254,7 +322,8 @@ public class ServiceClient {
 
             if (!settings.isGenerateClientInterfaces()) {
                 for (MethodGroupClient methodGroupClient : getMethodGroupClients()) {
-                    imports.add(String.format("%1$s.%2$s", methodGroupClient.getPackage(), methodGroupClient.getClassName()));
+                    imports.add(
+                        String.format("%1$s.%2$s", methodGroupClient.getPackage(), methodGroupClient.getClassName()));
                 }
             } else {
                 String interfacePackage = ClientModelUtil.getServiceClientInterfacePackageName();
@@ -269,7 +338,8 @@ public class ServiceClient {
             if (!settings.isFluent() && settings.isGenerateClientInterfaces()) {
                 imports.add(String.format("%1$s.%2$s", settings.getPackage(), getInterfaceName()));
                 for (MethodGroupClient methodGroupClient : getMethodGroupClients()) {
-                    imports.add(String.format("%1$s.%2$s", settings.getPackage(), methodGroupClient.getInterfaceName()));
+                    imports
+                        .add(String.format("%1$s.%2$s", settings.getPackage(), methodGroupClient.getInterfaceName()));
                 }
             }
 
@@ -292,9 +362,9 @@ public class ServiceClient {
     }
 
     protected void addHttpPolicyImports(Set<String> imports) {
+        ClassType.RETRY_POLICY.addImportsTo(imports, false);
         if (JavaSettings.getInstance().isBranded()) {
-            imports.add("com.azure.core.http.policy.RetryPolicy");
-            imports.add("com.azure.core.http.policy.UserAgentPolicy");
+            imports.add(UserAgentPolicy.class.getName());
         }
     }
 
@@ -322,10 +392,12 @@ public class ServiceClient {
         protected SecurityInfo securityInfo;
         protected String baseUrl;
         protected PipelinePolicyDetails pipelinePolicyDetails;
+        protected List<ClientAccessorMethod> clientAccessorMethods = Collections.emptyList();
         private String crossLanguageDefinitionId;
 
         /**
          * Sets the package that this service client belongs to.
+         * 
          * @param packageName the package that this service client belongs to
          * @return the Builder itself
          */
@@ -336,6 +408,7 @@ public class ServiceClient {
 
         /**
          * Sets the name of this client's class.
+         * 
          * @param className the name of this client's class
          * @return the Builder itself
          */
@@ -346,6 +419,7 @@ public class ServiceClient {
 
         /**
          * Sets the name of this client's interface.
+         * 
          * @param interfaceName the name of this client's interface
          * @return the Builder itself
          */
@@ -356,6 +430,7 @@ public class ServiceClient {
 
         /**
          * Sets the REST API that this client will send requests to.
+         * 
          * @param proxy the REST API that this client will send requests to
          * @return the Builder itself
          */
@@ -366,6 +441,7 @@ public class ServiceClient {
 
         /**
          * Sets the MethodGroupClients that belong to this ServiceClient.
+         * 
          * @param methodGroupClients the MethodGroupClients that belong to this ServiceClient
          * @return the Builder itself
          */
@@ -376,6 +452,7 @@ public class ServiceClient {
 
         /**
          * Sets the properties of this ServiceClient.
+         * 
          * @param properties the properties of this ServiceClient
          * @return the Builder itself
          */
@@ -386,6 +463,7 @@ public class ServiceClient {
 
         /**
          * Sets the constructors for this ServiceClient.
+         * 
          * @param constructors the constructors for this ServiceClient
          * @return the Builder itself
          */
@@ -396,6 +474,7 @@ public class ServiceClient {
 
         /**
          * Sets the client method overloads for this ServiceClient.
+         * 
          * @param clientMethods the client method overloads for this ServiceClient
          * @return the Builder itself
          */
@@ -406,6 +485,7 @@ public class ServiceClient {
 
         /**
          * Sets the azure environment parameter.
+         * 
          * @param azureEnvironmentParameter the azure environment
          * @return the Builder itself
          */
@@ -416,6 +496,7 @@ public class ServiceClient {
 
         /**
          * Sets the serializer adapter parameter.
+         * 
          * @param serializerAdapterParameter the serializer adapter
          * @return the Builder itself
          */
@@ -426,6 +507,7 @@ public class ServiceClient {
 
         /**
          * Sets the default poll interval parameter.
+         * 
          * @param defaultPollIntervalParameter the poll interval
          * @return the Builder itself
          */
@@ -436,6 +518,7 @@ public class ServiceClient {
 
         /**
          * Sets the credentials parameter.
+         * 
          * @param tokenCredentialParameter the credentials parameter
          * @return the Builder itself
          */
@@ -446,6 +529,7 @@ public class ServiceClient {
 
         /**
          * Sets the HttpPipeline parameter.
+         * 
          * @param httpPipelineParameter the HttpPipeline parameter
          * @return the Builder itself
          */
@@ -456,6 +540,7 @@ public class ServiceClient {
 
         /**
          * Sets the defaultCredentialScopes parameter.
+         * 
          * @param defaultCredentialScopes the default credential scopes
          * @return the Builder itself
          */
@@ -466,6 +551,7 @@ public class ServiceClient {
 
         /**
          * Sets the builderDisabled parameter.
+         * 
          * @param builderDisabled whether to disable ClientBuilder class
          * @return the Builder itself
          */
@@ -476,6 +562,7 @@ public class ServiceClient {
 
         /**
          * Sets the builderPackageName parameter.
+         * 
          * @param builderPackageName the package name for builder and wrapper classes
          * @return the Builder itself
          */
@@ -486,6 +573,7 @@ public class ServiceClient {
 
         /**
          * Sets the security configuration information.
+         * 
          * @param securityInfo the security configuration information
          * @return the Builder itself
          */
@@ -496,6 +584,7 @@ public class ServiceClient {
 
         /**
          * Sets the base URL.
+         * 
          * @param baseUrl the base URL
          * @return the Builder itself
          */
@@ -515,32 +604,22 @@ public class ServiceClient {
             return this;
         }
 
-        public ServiceClient build() {
-            return new ServiceClient(packageName,
-                    className,
-                    interfaceName,
-                    proxy,
-                    methodGroupClients,
-                    properties,
-                    constructors,
-                    clientMethods,
-                    azureEnvironmentParameter,
-                    tokenCredentialParameter,
-                    httpPipelineParameter,
-                    serializerAdapterParameter,
-                    defaultPollIntervalParameter,
-                    defaultCredentialScopes,
-                    builderDisabled,
-                    builderPackageName,
-                    securityInfo,
-                    baseUrl,
-                    pipelinePolicyDetails,
-                    crossLanguageDefinitionId);
+        public Builder clientAccessorMethods(List<ClientAccessorMethod> clientAccessorMethods) {
+            this.clientAccessorMethods = clientAccessorMethods;
+            return this;
         }
 
         public Builder crossLanguageDefinitionId(String crossLanguageDefinitionId) {
             this.crossLanguageDefinitionId = crossLanguageDefinitionId;
             return this;
+        }
+
+        public ServiceClient build() {
+            return new ServiceClient(packageName, className, interfaceName, proxy, methodGroupClients, properties,
+                constructors, clientMethods, azureEnvironmentParameter, tokenCredentialParameter, httpPipelineParameter,
+                serializerAdapterParameter, defaultPollIntervalParameter, defaultCredentialScopes, builderDisabled,
+                builderPackageName, securityInfo, baseUrl, pipelinePolicyDetails, clientAccessorMethods,
+                crossLanguageDefinitionId);
         }
     }
 }

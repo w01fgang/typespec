@@ -5,6 +5,7 @@ import {
   SdkContext,
   getAllModels,
   getClientType,
+  isAzureCoreModel,
 } from "@azure-tools/typespec-client-generator-core";
 import { ModelProperty, Operation, Type, getEffectiveModelType } from "@typespec/compiler";
 import {
@@ -75,7 +76,7 @@ export function getInputType(
   type: Type,
   typeCache: SdkTypeMap,
   operation?: Operation,
-  literalTypeContext?: LiteralTypeContext
+  literalTypeContext?: LiteralTypeContext,
 ): InputType {
   Logger.getInstance().debug(`getInputType for kind: ${type.kind}`);
 
@@ -85,7 +86,7 @@ export function getInputType(
 
 export function navigateModels(context: SdkContext<NetEmitterOptions>, typeCache: SdkTypeMap) {
   for (const type of getAllModels(context)) {
-    if (type.name === "") {
+    if (type.name === "" || isAzureCoreModel(type)) {
       continue;
     }
     if (type.kind === "model") {

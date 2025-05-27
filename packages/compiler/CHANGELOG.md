@@ -1,5 +1,144 @@
 # Change Log - @typespec/compiler
 
+## 0.63.0
+
+### Bug Fixes
+
+- [#5252](https://github.com/microsoft/typespec/pull/5252) Added RegEx validation for @pattern and will throw warning for invalid RegEx string
+
+### Features
+
+- [#4937](https://github.com/microsoft/typespec/pull/4937) Add mutateSubgraphWithNamespace as a separate API
+- [#4837](https://github.com/microsoft/typespec/pull/4837) Allow trailing delimiter in array values, tuple, decorator declaration, scalar initializer, etc.
+- [#5149](https://github.com/microsoft/typespec/pull/5149) Experimental: Improve Realm, Mutator, and Typekit implementations.
+
+This change strongly binds a Realm and Typekit together, and changes mutators so that new types are cloned within the
+mutator's realm. The default Typekit now creates a default typekit realm for the current program, and a Typekit can be
+easily created to work in a specific Program or Realm as needed.
+- [#4825](https://github.com/microsoft/typespec/pull/4825) Adds support for enum-driven visibility in the compiler core.
+
+
+## 0.62.0
+
+### Bug Fixes
+
+- [#4745](https://github.com/microsoft/typespec/pull/4745) Improve diagnostic when JS files fail to load due to a JS error
+
+### Bump dependencies
+
+- [#4679](https://github.com/microsoft/typespec/pull/4679) Upgrade dependencies - October 2024
+
+### Features
+
+- [#4807](https://github.com/microsoft/typespec/pull/4807) CLI logs diagnostic source path relative to the CWD.
+- [#4871](https://github.com/microsoft/typespec/pull/4871) [experimental] Mutators: Allow mutating namespaces
+- [#4470](https://github.com/microsoft/typespec/pull/4470) Add support for paginated operations
+- [#4849](https://github.com/microsoft/typespec/pull/4849) Overall of the symbol resolution. TypeSpec is able to resolve anything that can be statically linked. Augment decorators in turn are able to target any statically linkable types.
+- [#4806](https://github.com/microsoft/typespec/pull/4806) Diagnostics emitted in template instance include instantiation trace.
+- [#4790](https://github.com/microsoft/typespec/pull/4790) Support completion for tspconfig.yaml file in vscode
+
+
+## 0.61.2
+
+### Bug Fixes
+
+- [#4704](https://github.com/microsoft/typespec/pull/4704) Fix order of resolution from node_modules and parent package
+
+
+## 0.61.1
+
+### Bug Fixes
+
+- [#4697](https://github.com/microsoft/typespec/pull/4697) Fix module resolution when resolving self from within another package
+
+
+## 0.61.0
+
+### Bug Fixes
+
+- [#4626](https://github.com/microsoft/typespec/pull/4626) [API] Add missing exit callback
+- [#4513](https://github.com/microsoft/typespec/pull/4513) Fixes issue with the semantic walker where `exitTuple` was not being emitted.
+- [#4462](https://github.com/microsoft/typespec/pull/4462) Fix examples with enums inside of unions
+- [#4574](https://github.com/microsoft/typespec/pull/4574) Fix: Passing `const` of model type to `@example`
+- [#4551](https://github.com/microsoft/typespec/pull/4551) Json serialization of example respect `@encodedName`
+- [#4514](https://github.com/microsoft/typespec/pull/4514) Fix issue with decimal numeric and leading `0.0` with multiple digit
+- [#4445](https://github.com/microsoft/typespec/pull/4445) [API] model `sourceModels` property are now projected correctly
+- [#4467](https://github.com/microsoft/typespec/pull/4467) Changing tspconfig.yaml won't take effect in LSP server because of the cache
+- [#4563](https://github.com/microsoft/typespec/pull/4563) `tsp compile --watch` reread from `tspconfig.yaml` file
+
+### Bump dependencies
+
+- [#4424](https://github.com/microsoft/typespec/pull/4424) Bump dependencies
+
+### Features
+
+- [#4442](https://github.com/microsoft/typespec/pull/4442) Library diagnostic can now define a `description` and `url` that links to a more detailed doc for this diagnostic
+- [#4290](https://github.com/microsoft/typespec/pull/4290) Adding experimental (unstable) API fro Type Mutators
+- [#4595](https://github.com/microsoft/typespec/pull/4595) Expose more accurate `PackageJson` type and deprecate `NodePackage`
+- [#4606](https://github.com/microsoft/typespec/pull/4606) Add support for node `exports` field. Specific typespec exports can be provided with the `typespec` field
+
+```json
+"exports": {
+  ".": {
+    "typespec": "./lib/main.tsp",
+  },
+  "./named": {
+    "typespec": "./lib/named.tsp",
+  }
+}
+```
+- [#4539](https://github.com/microsoft/typespec/pull/4539) Support nested emitter options
+
+### Breaking Changes
+
+- [#4539](https://github.com/microsoft/typespec/pull/4539) Config parameters and emitters options cannot contains `.`. This conflict with newly added support for nested options.
+- [#4500](https://github.com/microsoft/typespec/pull/4500) API: Update default of `decoratorArgMarshalling` from `legacy` to `new`
+
+To revert to the old behavior export the following. **Highly discouraged, this will be removed in a few versions.**
+
+```ts
+export const $flags = definePackageFlags({
+  decoratorArgMarshalling: "legacy",
+});
+```
+
+
+## 0.60.1
+
+### Bug Fixes
+
+- [#4420](https://github.com/microsoft/typespec/pull/4420) Fix: Numeric values defined with e-notation incorrectly resolved
+
+
+## 0.60.0
+
+### Bug Fixes
+
+- [#4381](https://github.com/microsoft/typespec/pull/4381) Fix Semantic walker doesn't fire exitOperation or exitModelProperty
+- [#4146](https://github.com/microsoft/typespec/pull/4146) Fix model expression defined in alias will resolve its namespace from the namespace where the alias was declared
+- [#4147](https://github.com/microsoft/typespec/pull/4147) Fix examples with models using `extends`
+- [#4144](https://github.com/microsoft/typespec/pull/4144) Fix: Model and union expression in template were not considered as template instances
+- [#4135](https://github.com/microsoft/typespec/pull/4135) Fix numeric 0 stringify producing 0.0
+- [#4064](https://github.com/microsoft/typespec/pull/4064) IDE: Formatting command will use prettier config if provided over the editor's configuration.
+- [#4089](https://github.com/microsoft/typespec/pull/4089) Fix tmlanguage for named type argument in type reference.
+- [#4324](https://github.com/microsoft/typespec/pull/4324) API: Extract source resolution logic into its own source loader
+
+### Features
+
+- [#4139](https://github.com/microsoft/typespec/pull/4139) Add new way to define decorator implementation with `$decorators` export.
+```ts
+export const $decorators = {
+  "TypeSpec.OpenAPI": {
+    useRef: $useRef,
+    oneOf: $oneOf,
+  },
+};
+```
+- [#4148](https://github.com/microsoft/typespec/pull/4148) Diagnostics logged to the terminal now have a clickable hyperlink to the diagnostic documentation url if applicable.
+- [#4141](https://github.com/microsoft/typespec/pull/4141) Diagnostic code in IDE now link to the linter rule documentation url if applicable
+- [#4357](https://github.com/microsoft/typespec/pull/4357) Improvements to type relation errors: Show stack when it happens in a nested property otherwise show up in the correct location.
+
+
 ## 0.59.1
 
 ### Bug Fixes

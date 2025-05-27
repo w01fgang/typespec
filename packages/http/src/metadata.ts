@@ -16,6 +16,7 @@ import {
   isBody,
   isBodyIgnore,
   isBodyRoot,
+  isCookieParam,
   isHeader,
   isMultipartBodyProperty,
   isPathParam,
@@ -129,7 +130,7 @@ function arrayToVisibility(array: readonly string[] | undefined): Visibility | u
  *  */
 export function getVisibilitySuffix(
   visibility: Visibility,
-  canonicalVisibility: Visibility | undefined = Visibility.None
+  canonicalVisibility: Visibility | undefined = Visibility.None,
 ) {
   let suffix = "";
 
@@ -204,11 +205,12 @@ export function getRequestVisibility(verb: HttpVerb): Visibility {
 export function resolveRequestVisibility(
   program: Program,
   operation: Operation,
-  verb: HttpVerb
+  verb: HttpVerb,
 ): Visibility {
-  const parameterVisibility = arrayToVisibility(getParameterVisibility(program, operation));
+  const parameterVisibility = getParameterVisibility(program, operation);
+  const parameterVisibilityArray = arrayToVisibility(parameterVisibility);
   const defaultVisibility = getDefaultVisibilityForVerb(verb);
-  let visibility = parameterVisibility ?? defaultVisibility;
+  let visibility = parameterVisibilityArray ?? defaultVisibility;
   // If the verb is PATCH, then we need to add the patch flag to the visibility in order for
   // later processes to properly apply it
   if (verb === "patch") {
@@ -219,11 +221,12 @@ export function resolveRequestVisibility(
 
 /**
  * Determines if a property is metadata. A property is defined to be
- * metadata if it is marked `@header`, `@query`, `@path`, or `@statusCode`.
+ * metadata if it is marked `@header`, `@cookie`, `@query`, `@path`, or `@statusCode`.
  */
 export function isMetadata(program: Program, property: ModelProperty) {
   return (
     isHeader(program, property) ||
+    isCookieParam(program, property) ||
     isQueryParam(program, property) ||
     isPathParam(program, property) ||
     isStatusCode(program, property)
@@ -234,6 +237,7 @@ export function isMetadata(program: Program, property: ModelProperty) {
  * Determines if the given property is visible with the given visibility.
  */
 export function isVisible(program: Program, property: ModelProperty, visibility: Visibility) {
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   return isVisibleCore(program, property, visibilityToArray(visibility));
 }
 
@@ -251,7 +255,7 @@ export function isApplicableMetadata(
   program: Program,
   property: ModelProperty,
   visibility: Visibility,
-  isMetadataCallback = isMetadata
+  isMetadataCallback = isMetadata,
 ) {
   return isApplicableMetadataCore(program, property, visibility, false, isMetadataCallback);
 }
@@ -264,7 +268,7 @@ export function isApplicableMetadataOrBody(
   program: Program,
   property: ModelProperty,
   visibility: Visibility,
-  isMetadataCallback = isMetadata
+  isMetadataCallback = isMetadata,
 ) {
   return isApplicableMetadataCore(program, property, visibility, true, isMetadataCallback);
 }
@@ -274,7 +278,7 @@ function isApplicableMetadataCore(
   property: ModelProperty,
   visibility: Visibility,
   treatBodyAsMetadata: boolean,
-  isMetadataCallback: (program: Program, property: ModelProperty) => boolean
+  isMetadataCallback: (program: Program, property: ModelProperty) => boolean,
 ) {
   if (visibility & Visibility.Item) {
     return false; // no metadata is applicable to collection items
@@ -339,7 +343,7 @@ export interface MetadataInfo {
   isPayloadProperty(
     property: ModelProperty,
     visibility: Visibility,
-    inExplicitBody?: boolean
+    inExplicitBody?: boolean,
   ): boolean;
 
   /**
@@ -423,7 +427,7 @@ export function createMetadataInfo(program: Program, options?: MetadataInfoOptio
       type,
       visibility,
       () => computeState(type, visibility),
-      State.ComputationInProgress
+      State.ComputationInProgress,
     );
   }
 
@@ -508,7 +512,7 @@ export function createMetadataInfo(program: Program, options?: MetadataInfoOptio
     property: ModelProperty,
     visibility: Visibility,
     inExplicitBody?: boolean,
-    keepShareableProperties?: boolean
+    keepShareableProperties?: boolean,
   ): boolean {
     if (
       !inExplicitBody &&
@@ -544,7 +548,7 @@ export function createMetadataInfo(program: Program, options?: MetadataInfoOptio
   function getEffectivePayloadType(type: Type, visibility: Visibility): Type {
     if (type.kind === "Model" && !type.name) {
       const effective = getEffectiveModelType(program, type, (p) =>
-        isPayloadProperty(p, visibility, undefined, /* keep shared */ false)
+        isPayloadProperty(p, visibility, undefined, /* keep shared */ false),
       );
       if (effective.name) {
         return effective;

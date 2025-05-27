@@ -52,19 +52,15 @@ Push-Location "$packageRoot/generator"
 try {
     Write-Host "Working in $PWD"
    
-    Write-Host "Current PATH: $env:PATH"
-    Write-Host "Current JAVA_HOME: $Env:JAVA_HOME"
     $env:JAVA_HOME = $env:JAVA_HOME_21_X64
-    Write-Host "Updated JAVA_HOME: $Env:JAVA_HOME"
+    Write-Host "JAVA_HOME: $Env:JAVA_HOME"
 
     $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
   
-    Write-Host "Updated PATH: $env:PATH"
-
     Invoke-LoggedCommand "java -version"
     Invoke-LoggedCommand "mvn -version"
 
-    Invoke-LoggedCommand "mvn clean install -f ./pom.xml"
+    Invoke-LoggedCommand "mvn clean install --no-transfer-progress -T 1C -f ./pom.xml"
 }
 finally {
     Pop-Location
@@ -82,7 +78,10 @@ try {
     $file = Invoke-LoggedCommand "npm pack -q"
     Copy-Item $file -Destination "$outputPath/packages"
 
+    $exitCodeBeforeApiView = $global:LASTEXITCODE
     & "$packageRoot/../../eng/emitters/scripts/Generate-APIView-CodeFile.ps1" -ArtifactPath "$outputPath/packages"
+    # temporary ignore Generate-APIView-CodeFile.ps1 failure
+    $global:LASTEXITCODE = $exitCodeBeforeApiView
 
     Write-PackageInfo -packageName "typespec-http-client-java" -directoryPath "packages/http-client-java/emitter/src" -version $emitterVersion
 }

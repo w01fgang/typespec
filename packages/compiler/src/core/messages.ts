@@ -64,6 +64,9 @@ const diagnostics = {
 
   "triple-quote-indent": {
     severity: "error",
+    description:
+      "Report when a triple-quoted string has lines with less indentation as the closing triple quotes.",
+    url: "https://typespec.io/docs/standard-library/diags/triple-quote-indent",
     messages: {
       default:
         "All lines in triple-quoted string lines must have the same indentation as closing triple quotes.",
@@ -145,12 +148,6 @@ const diagnostics = {
       property: "Property expected.",
       enumMember: "Enum member expected.",
       typeofTarget: "Typeof expects a value literal or value reference.",
-    },
-  },
-  "trailing-token": {
-    severity: "error",
-    messages: {
-      default: paramMessage`Trailing ${"token"}`,
     },
   },
   "unknown-directive": {
@@ -318,18 +315,6 @@ const diagnostics = {
       default: paramMessage`Intersection contains duplicate property definitions for ${"propName"}`,
     },
   },
-  "unknown-identifier": {
-    severity: "error",
-    messages: {
-      default: paramMessage`Unknown identifier ${"id"}`,
-    },
-  },
-  "unknown-decorator": {
-    severity: "error",
-    messages: {
-      default: "Unknown decorator",
-    },
-  },
   "invalid-decorator": {
     severity: "error",
     messages: {
@@ -340,9 +325,11 @@ const diagnostics = {
     severity: "error",
     messages: {
       default: paramMessage`Cannot resolve ${"id"}`,
+      identifier: paramMessage`Unknown identifier ${"id"}`,
+      decorator: paramMessage`Unknown decorator @${"id"}`,
       inDecorator: paramMessage`Cannot resolve ${"id"} in decorator`,
       underNamespace: paramMessage`Namespace ${"namespace"} doesn't have member ${"id"}`,
-      underContainer: paramMessage`${"kind"} doesn't have member ${"id"}`,
+      member: paramMessage`${"kind"} doesn't have member ${"id"}`,
       metaProperty: paramMessage`${"kind"} doesn't have meta property ${"id"}`,
       node: paramMessage`Cannot resolve '${"id"}' in node ${"nodeName"} since it has no members. Did you mean to use "::" instead of "."?`,
     },
@@ -444,8 +431,13 @@ const diagnostics = {
   unassignable: {
     severity: "error",
     messages: {
-      default: paramMessage`Type '${"value"}' is not assignable to type '${"targetType"}'`,
-      withDetails: paramMessage`Type '${"sourceType"}' is not assignable to type '${"targetType"}'\n  ${"details"}`,
+      default: paramMessage`Type '${"sourceType"}' is not assignable to type '${"targetType"}'`,
+    },
+  },
+  "property-unassignable": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Types of property '${"propName"}' are incompatible`,
     },
   },
   "property-required": {
@@ -606,6 +598,12 @@ const diagnostics = {
       default: paramMessage`Path "${"path"}" cannot be relative. Use {cwd} or {project-root} to specify what the path should be relative to.`,
     },
   },
+  "config-invalid-name": {
+    severity: "error",
+    messages: {
+      default: paramMessage`The configuration name "${"name"}" is invalid because it contains a dot ("."). Using a dot will conflict with using nested configuration values.`,
+    },
+  },
   "path-unix-style": {
     severity: "warning",
     messages: {
@@ -648,8 +646,7 @@ const diagnostics = {
   "library-invalid": {
     severity: "error",
     messages: {
-      tspMain: paramMessage`Library "${"path"}" has an invalid tspMain file.`,
-      default: paramMessage`Library "${"path"}" has an invalid main file.`,
+      default: paramMessage`Library "${"path"}" is invalid: ${"message"}`,
     },
   },
   "incompatible-library": {
@@ -727,7 +724,13 @@ const diagnostics = {
   "invalid-emitter": {
     severity: "error",
     messages: {
-      default: paramMessage`Requested emitter package ${"emitterPackage"} does not provide an "onEmit" function.`,
+      default: paramMessage`Requested emitter package ${"emitterPackage"} does not provide an "$onEmit" function.`,
+    },
+  },
+  "js-error": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Failed to load ${"specifier"} due to the following JS error: ${"error"}`,
     },
   },
   "missing-import": {
@@ -778,6 +781,13 @@ const diagnostics = {
   /**
    * Decorator
    */
+  "invalid-pattern-regex": {
+    severity: "warning",
+    messages: {
+      default: "@pattern decorator expects a valid regular expression pattern.",
+    },
+  },
+
   "decorator-wrong-target": {
     severity: "error",
     messages: {
@@ -884,6 +894,32 @@ const diagnostics = {
     },
   },
 
+  "incompatible-paging-props": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Paging property has multiple types: '${"kinds"}'`,
+    },
+  },
+  "invalid-paging-prop": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Paging property '${"kind"}' is not valid in this context.`,
+      input: paramMessage`Paging property '${"kind"}' cannot be used in the parameters of an operation.`,
+      output: paramMessage`Paging property '${"kind"}' cannot be used in the return type of an operation.`,
+    },
+  },
+  "duplicate-paging-prop": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Duplicate property paging '${"kind"}' for operation ${"operationName"}.`,
+    },
+  },
+  "missing-paging-items": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Paged operation '${"operationName"}' return type must have a property annotated with @pageItems.`,
+    },
+  },
   /**
    * Service
    */
@@ -981,6 +1017,28 @@ const diagnostics = {
       default: "Conflict marker encountered.",
     },
   },
+
+  // #region Visibility
+  "visibility-sealed": {
+    severity: "error",
+    messages: {
+      default: paramMessage`Visibility of property '${"propName"}' is sealed and cannot be changed.`,
+    },
+  },
+  "visibility-mixed-legacy": {
+    severity: "error",
+    messages: {
+      default:
+        "Cannot apply both string (legacy) visibility modifiers and enum-based visibility modifiers to a property.",
+    },
+  },
+  "default-visibility-not-member": {
+    severity: "error",
+    messages: {
+      default: "The default visibility modifiers of a class must be members of the class enum.",
+    },
+  },
+  // #endregion
 
   // #region CLI
   "no-compatible-vs-installed": {

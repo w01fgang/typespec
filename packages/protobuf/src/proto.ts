@@ -76,7 +76,7 @@ export interface PackageDetails {
 export const $package: PackageDecorator = (
   ctx: DecoratorContext,
   target: Namespace,
-  details?: Type
+  details?: Type,
 ) => {
   ctx.program.stateMap(state.package).set(target, details);
 };
@@ -106,7 +106,7 @@ export const $externRef: ExternRefDecorator = (
   ctx: DecoratorContext,
   target: Model,
   path: Type,
-  name: Type
+  name: Type,
 ) => {
   ctx.program
     .stateMap(state.externRef)
@@ -150,7 +150,7 @@ export const $message: MessageDecorator = (ctx: DecoratorContext, target: Type) 
 export const $field: FieldDecorator = (
   ctx: DecoratorContext,
   target: ModelProperty,
-  fieldIndex: number
+  fieldIndex: number,
 ) => {
   if (!Number.isInteger(fieldIndex) || fieldIndex <= 0) {
     reportDiagnostic(ctx.program, {

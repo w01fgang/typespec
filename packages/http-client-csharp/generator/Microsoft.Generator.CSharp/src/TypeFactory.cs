@@ -24,11 +24,8 @@ namespace Microsoft.Generator.CSharp
         private Dictionary<EnumCacheKey, TypeProvider?>? _enumCache;
         private Dictionary<EnumCacheKey, TypeProvider?> EnumCache => _enumCache ??= [];
 
-        private Dictionary<InputType, CSharpType>? _typeCache;
-        private Dictionary<InputType, CSharpType> TypeCache => _typeCache ??= [];
-
-        private HashSet<InputType>? _nullTypes;
-        private HashSet<InputType> NullTypes => _nullTypes ??= [];
+        private Dictionary<InputType, CSharpType?>? _typeCache;
+        private Dictionary<InputType, CSharpType?> TypeCache => _typeCache ??= [];
 
         private Dictionary<InputModelProperty, PropertyProvider?>? _propertyCache;
         private Dictionary<InputModelProperty, PropertyProvider?> PropertyCache => _propertyCache ??= [];
@@ -37,28 +34,26 @@ namespace Microsoft.Generator.CSharp
         private IReadOnlyList<LibraryVisitor> Visitors => CodeModelPlugin.Instance.Visitors;
         private Dictionary<InputType, IReadOnlyList<TypeProvider>> SerializationsCache => _serializationsCache ??= [];
 
+        private HashSet<string>? _unionTypes;
+        internal HashSet<string> UnionTypes => _unionTypes ??= [];
+
         protected internal TypeFactory()
         {
         }
 
         public CSharpType? CreateCSharpType(InputType inputType)
         {
-            if (NullTypes.Contains(inputType))
+            if (TypeCache.TryGetValue(inputType, out var type))
             {
-                return null;
+                return type;
             }
 
-            CSharpType? type = CreateCSharpTypeCore(inputType);
-
-            if (type == null)
-            {
-                NullTypes.Add(inputType);
-            }
-
+            type = CreateCSharpTypeCore(inputType);
+            TypeCache.Add(inputType, type);
             return type;
         }
 
-        private protected virtual CSharpType? CreateCSharpTypeCore(InputType inputType)
+        protected virtual CSharpType? CreateCSharpTypeCore(InputType inputType)
         {
             CSharpType? type;
             switch (inputType)
@@ -75,6 +70,7 @@ namespace Microsoft.Generator.CSharp
                         if (unionInput != null)
                         {
                             unionInputs.Add(unionInput);
+                            UnionTypes.Add(unionInput.Name);
                         }
                     }
                     type = CSharpType.FromUnion(unionInputs);
@@ -97,20 +93,10 @@ namespace Microsoft.Generator.CSharp
                     type = CreateCSharpType(nullableType.Type)?.WithNullable(true);
                     break;
                 default:
-                    type = CreatePrimitiveCSharpType(inputType);
+                    type = CreatePrimitiveCSharpTypeCore(inputType);
                     break;
             }
 
-            return type;
-        }
-
-        internal CSharpType CreatePrimitiveCSharpType(InputType inputType)
-        {
-            if (TypeCache.TryGetValue(inputType, out var type))
-                return type;
-
-            type = CreatePrimitiveCSharpTypeCore(inputType);
-            TypeCache.Add(inputType, type);
             return type;
         }
 
@@ -119,34 +105,34 @@ namespace Microsoft.Generator.CSharp
         /// </summary>
         /// <param name="inputType">The <see cref="InputType"/> to convert.</param>
         /// <returns>An instance of <see cref="CSharpType"/>.</returns>
-        private protected virtual CSharpType CreatePrimitiveCSharpTypeCore(InputType inputType) => inputType switch
+        internal static Type CreatePrimitiveCSharpTypeCore(InputType inputType) => inputType switch
         {
             InputPrimitiveType primitiveType => primitiveType.Kind switch
             {
-                InputPrimitiveTypeKind.Boolean => new CSharpType(typeof(bool)),
-                InputPrimitiveTypeKind.Bytes => new CSharpType(typeof(BinaryData)),
-                InputPrimitiveTypeKind.PlainDate => new CSharpType(typeof(DateTimeOffset)),
-                InputPrimitiveTypeKind.Decimal => new CSharpType(typeof(decimal)),
-                InputPrimitiveTypeKind.Decimal128 => new CSharpType(typeof(decimal)),
-                InputPrimitiveTypeKind.PlainTime => new CSharpType(typeof(TimeSpan)),
-                InputPrimitiveTypeKind.Float32 => new CSharpType(typeof(float)),
-                InputPrimitiveTypeKind.Float64 => new CSharpType(typeof(double)),
-                InputPrimitiveTypeKind.Int8 => new CSharpType(typeof(sbyte)),
-                InputPrimitiveTypeKind.UInt8 => new CSharpType(typeof(byte)),
-                InputPrimitiveTypeKind.Int32 => new CSharpType(typeof(int)),
-                InputPrimitiveTypeKind.Int64 => new CSharpType(typeof(long)),
-                InputPrimitiveTypeKind.SafeInt => new CSharpType(typeof(long)),
-                InputPrimitiveTypeKind.Integer => new CSharpType(typeof(long)), // in typespec, integer is the base type of int related types, see type relation: https://typespec.io/docs/language-basics/type-relations
-                InputPrimitiveTypeKind.Float => new CSharpType(typeof(double)), // in typespec, float is the base type of float32 and float64, see type relation: https://typespec.io/docs/language-basics/type-relations
-                InputPrimitiveTypeKind.Numeric => new CSharpType(typeof(double)), // in typespec, numeric is the base type of number types, see type relation: https://typespec.io/docs/language-basics/type-relations
-                InputPrimitiveTypeKind.Stream => new CSharpType(typeof(Stream)),
-                InputPrimitiveTypeKind.String => new CSharpType(typeof(string)),
-                InputPrimitiveTypeKind.Url => new CSharpType(typeof(Uri)),
-                InputPrimitiveTypeKind.Any => new CSharpType(typeof(BinaryData)),
-                _ => new CSharpType(typeof(object)),
+                InputPrimitiveTypeKind.Boolean => typeof(bool),
+                InputPrimitiveTypeKind.Bytes => typeof(BinaryData),
+                InputPrimitiveTypeKind.PlainDate => typeof(DateTimeOffset),
+                InputPrimitiveTypeKind.Decimal => typeof(decimal),
+                InputPrimitiveTypeKind.Decimal128 => typeof(decimal),
+                InputPrimitiveTypeKind.PlainTime => typeof(TimeSpan),
+                InputPrimitiveTypeKind.Float32 => typeof(float),
+                InputPrimitiveTypeKind.Float64 => typeof(double),
+                InputPrimitiveTypeKind.Int8 => typeof(sbyte),
+                InputPrimitiveTypeKind.UInt8 => typeof(byte),
+                InputPrimitiveTypeKind.Int32 => typeof(int),
+                InputPrimitiveTypeKind.Int64 => typeof(long),
+                InputPrimitiveTypeKind.SafeInt => typeof(long),
+                InputPrimitiveTypeKind.Integer => typeof(long), // in typespec, integer is the base type of int related types, see type relation: https://typespec.io/docs/language-basics/type-relations
+                InputPrimitiveTypeKind.Float => typeof(double), // in typespec, float is the base type of float32 and float64, see type relation: https://typespec.io/docs/language-basics/type-relations
+                InputPrimitiveTypeKind.Numeric => typeof(double), // in typespec, numeric is the base type of number types, see type relation: https://typespec.io/docs/language-basics/type-relations
+                InputPrimitiveTypeKind.Stream => typeof(Stream),
+                InputPrimitiveTypeKind.String => typeof(string),
+                InputPrimitiveTypeKind.Url => typeof(Uri),
+                InputPrimitiveTypeKind.Unknown => typeof(BinaryData),
+                _ => typeof(object),
             },
-            InputDateTimeType dateTimeType => new CSharpType(typeof(DateTimeOffset)),
-            InputDurationType durationType => new CSharpType(typeof(TimeSpan)),
+            InputDateTimeType dateTimeType => typeof(DateTimeOffset),
+            InputDurationType durationType => typeof(TimeSpan),
             _ => throw new InvalidOperationException($"Unknown type: {inputType}")
         };
 
@@ -227,12 +213,12 @@ namespace Microsoft.Generator.CSharp
         /// </summary>
         /// <param name="property">The input property.</param>
         /// <returns>The property provider.</returns>
-        public PropertyProvider? CreatePropertyProvider(InputModelProperty property, TypeProvider enclosingType)
+        public PropertyProvider? CreateProperty(InputModelProperty property, TypeProvider enclosingType)
         {
             if (PropertyCache.TryGetValue(property, out var propertyProvider))
                 return propertyProvider;
 
-            propertyProvider = CreatePropertyProviderCore(property, enclosingType);
+            propertyProvider = CreatePropertyCore(property, enclosingType);
             PropertyCache.Add(property, propertyProvider);
             return propertyProvider;
         }
@@ -243,20 +229,18 @@ namespace Microsoft.Generator.CSharp
         /// <param name="property">The input model property.</param>
         /// <param name="enclosingType">The enclosing type.</param>
         /// <returns>An instance of <see cref="PropertyProvider"/>.</returns>
-        private PropertyProvider? CreatePropertyProviderCore(InputModelProperty property, TypeProvider enclosingType)
+        private PropertyProvider? CreatePropertyCore(InputModelProperty property, TypeProvider enclosingType)
         {
+            PropertyProvider.TryCreate(property, enclosingType, out var propertyProvider);
+            if (Visitors.Count == 0)
             {
-                PropertyProvider.TryCreate(property, enclosingType, out var propertyProvider);
-                if (Visitors.Count == 0)
-                {
-                    return propertyProvider;
-                }
-                foreach (var visitor in Visitors)
-                {
-                    propertyProvider = visitor.Visit(property, propertyProvider);
-                }
                 return propertyProvider;
             }
+            foreach (var visitor in Visitors)
+            {
+                propertyProvider = visitor.Visit(property, propertyProvider);
+            }
+            return propertyProvider;
         }
 
         /// <summary>
@@ -298,6 +282,7 @@ namespace Microsoft.Generator.CSharp
                 {
                     BytesKnownEncoding.Base64 => SerializationFormat.Bytes_Base64,
                     BytesKnownEncoding.Base64Url => SerializationFormat.Bytes_Base64Url,
+                    null => SerializationFormat.Default,
                     _ => throw new IndexOutOfRangeException($"unknown encode {primitiveType.Encode}")
                 },
                 InputPrimitiveTypeKind.Integer or InputPrimitiveTypeKind.Int8 or InputPrimitiveTypeKind.Int16 or InputPrimitiveTypeKind.Int32

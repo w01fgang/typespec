@@ -9,7 +9,7 @@ using Azure.ClientGenerator.Core;
 @service({
   title: "EnumService",
 })
-namespace Cadl.EnumService;
+namespace TspTest.EnumService;
 
 #suppress "@azure-tools/typespec-azure-core/use-extensible-enum" "For testing"
 enum Color {
@@ -35,6 +35,12 @@ union PriorityModel {
   int32,
   High: 100,
   Low: 0,
+}
+
+union OlympicRecordModel {
+  float32,
+  Olympic_100_Meters: 9.58,
+  Olympic_200_Meters: 19.30,
 }
 
 #suppress "@azure-tools/typespec-azure-core/use-extensible-enum" "For testing"
@@ -69,10 +75,12 @@ model Operation {
   colorValue: Color.Green;
   colorModelValue: ColorModel.Blue;
   unitValue?: Unit.Milligram;
+  olympicRecord?: OlympicRecordModel;
+  olympicRecordValue?: OlympicRecordModel.Olympic_100_Meters;
 }
 
 @client({
-  service: Cadl.EnumService,
+  service: TspTest.EnumService,
   name: "EnumServiceClient",
 })
 @route("/enum")

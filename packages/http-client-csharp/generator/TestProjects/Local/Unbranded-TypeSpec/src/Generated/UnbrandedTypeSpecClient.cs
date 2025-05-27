@@ -7,6 +7,7 @@ using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnbrandedTypeSpec.Models;
 
@@ -16,9 +17,10 @@ namespace UnbrandedTypeSpec
     public partial class UnbrandedTypeSpecClient
     {
         private readonly Uri _endpoint;
-        private const string AuthorizationHeader = "my-api-key";
         /// <summary> A credential used to authenticate to the service. </summary>
         private readonly ApiKeyCredential _keyCredential;
+        private const string AuthorizationHeader = "my-api-key";
+        private readonly string _apiVersion;
 
         /// <summary> Initializes a new instance of UnbrandedTypeSpecClient for mocking. </summary>
         protected UnbrandedTypeSpecClient()
@@ -48,6 +50,7 @@ namespace UnbrandedTypeSpec
             _endpoint = endpoint;
             _keyCredential = keyCredential;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader) }, Array.Empty<PipelinePolicy>());
+            _apiVersion = options.Version;
         }
 
         /// <summary> The HTTP pipeline for sending and receiving REST requests and responses. </summary>
@@ -105,14 +108,15 @@ namespace UnbrandedTypeSpec
         /// <param name="headParameter"></param>
         /// <param name="queryParameter"></param>
         /// <param name="optionalQuery"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="headParameter"/> or <paramref name="queryParameter"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> SayHi(string headParameter, string queryParameter, string optionalQuery)
+        public virtual ClientResult<Thing> SayHi(string headParameter, string queryParameter, string optionalQuery = null, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(headParameter, nameof(headParameter));
             Argument.AssertNotNull(queryParameter, nameof(queryParameter));
 
-            ClientResult result = SayHi(headParameter, queryParameter, optionalQuery, null);
+            ClientResult result = SayHi(headParameter, queryParameter, optionalQuery, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -120,14 +124,15 @@ namespace UnbrandedTypeSpec
         /// <param name="headParameter"></param>
         /// <param name="queryParameter"></param>
         /// <param name="optionalQuery"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="headParameter"/> or <paramref name="queryParameter"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> SayHiAsync(string headParameter, string queryParameter, string optionalQuery)
+        public virtual async Task<ClientResult<Thing>> SayHiAsync(string headParameter, string queryParameter, string optionalQuery = null, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(headParameter, nameof(headParameter));
             Argument.AssertNotNull(queryParameter, nameof(queryParameter));
 
-            ClientResult result = await SayHiAsync(headParameter, queryParameter, optionalQuery, null).ConfigureAwait(false);
+            ClientResult result = await SayHiAsync(headParameter, queryParameter, optionalQuery, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -146,7 +151,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="p2"/>, <paramref name="p1"/> or <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult HelloAgain(string p2, string p1, BinaryContent content, RequestOptions options)
+        public virtual ClientResult HelloAgain(string p2, string p1, BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(p2, nameof(p2));
             Argument.AssertNotNull(p1, nameof(p1));
@@ -171,7 +176,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="p2"/>, <paramref name="p1"/> or <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> HelloAgainAsync(string p2, string p1, BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> HelloAgainAsync(string p2, string p1, BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(p2, nameof(p2));
             Argument.AssertNotNull(p1, nameof(p1));
@@ -185,15 +190,16 @@ namespace UnbrandedTypeSpec
         /// <param name="p2"></param>
         /// <param name="p1"></param>
         /// <param name="action"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="p2"/>, <paramref name="p1"/> or <paramref name="action"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<RoundTripModel> HelloAgain(string p2, string p1, RoundTripModel action)
+        public virtual ClientResult<RoundTripModel> HelloAgain(string p2, string p1, RoundTripModel action, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(p2, nameof(p2));
             Argument.AssertNotNull(p1, nameof(p1));
             Argument.AssertNotNull(action, nameof(action));
 
-            ClientResult result = HelloAgain(p2, p1, action, null);
+            ClientResult result = HelloAgain(p2, p1, action, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((RoundTripModel)result, result.GetRawResponse());
         }
 
@@ -201,15 +207,16 @@ namespace UnbrandedTypeSpec
         /// <param name="p2"></param>
         /// <param name="p1"></param>
         /// <param name="action"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="p2"/>, <paramref name="p1"/> or <paramref name="action"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<RoundTripModel>> HelloAgainAsync(string p2, string p1, RoundTripModel action)
+        public virtual async Task<ClientResult<RoundTripModel>> HelloAgainAsync(string p2, string p1, RoundTripModel action, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(p2, nameof(p2));
             Argument.AssertNotNull(p1, nameof(p1));
             Argument.AssertNotNull(action, nameof(action));
 
-            ClientResult result = await HelloAgainAsync(p2, p1, action, null).ConfigureAwait(false);
+            ClientResult result = await HelloAgainAsync(p2, p1, action, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((RoundTripModel)result, result.GetRawResponse());
         }
 
@@ -228,7 +235,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="p2"/>, <paramref name="p1"/> or <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult NoContentType(string p2, string p1, BinaryContent content, RequestOptions options)
+        public virtual ClientResult NoContentType(string p2, string p1, BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(p2, nameof(p2));
             Argument.AssertNotNull(p1, nameof(p1));
@@ -253,7 +260,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="p2"/>, <paramref name="p1"/> or <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> NoContentTypeAsync(string p2, string p1, BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> NoContentTypeAsync(string p2, string p1, BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(p2, nameof(p2));
             Argument.AssertNotNull(p1, nameof(p1));
@@ -298,18 +305,20 @@ namespace UnbrandedTypeSpec
         }
 
         /// <summary> Return hi in demo2. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> HelloDemo2()
+        public virtual ClientResult<Thing> HelloDemo2(CancellationToken cancellationToken = default)
         {
-            ClientResult result = HelloDemo2(null);
+            ClientResult result = HelloDemo2(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
         /// <summary> Return hi in demo2. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> HelloDemo2Async()
+        public virtual async Task<ClientResult<Thing>> HelloDemo2Async(CancellationToken cancellationToken = default)
         {
-            ClientResult result = await HelloDemo2Async(null).ConfigureAwait(false);
+            ClientResult result = await HelloDemo2Async(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -326,7 +335,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult CreateLiteral(BinaryContent content, RequestOptions options)
+        public virtual ClientResult CreateLiteral(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -347,7 +356,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> CreateLiteralAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> CreateLiteralAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -357,25 +366,27 @@ namespace UnbrandedTypeSpec
 
         /// <summary> Create with literal value. </summary>
         /// <param name="body"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="body"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> CreateLiteral(Thing body)
+        public virtual ClientResult<Thing> CreateLiteral(Thing body, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(body, nameof(body));
 
-            ClientResult result = CreateLiteral(body, null);
+            ClientResult result = CreateLiteral(body, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
         /// <summary> Create with literal value. </summary>
         /// <param name="body"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="body"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> CreateLiteralAsync(Thing body)
+        public virtual async Task<ClientResult<Thing>> CreateLiteralAsync(Thing body, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(body, nameof(body));
 
-            ClientResult result = await CreateLiteralAsync(body, null).ConfigureAwait(false);
+            ClientResult result = await CreateLiteralAsync(body, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -414,18 +425,20 @@ namespace UnbrandedTypeSpec
         }
 
         /// <summary> Send literal parameters. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> HelloLiteral()
+        public virtual ClientResult<Thing> HelloLiteral(CancellationToken cancellationToken = default)
         {
-            ClientResult result = HelloLiteral(null);
+            ClientResult result = HelloLiteral(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
         /// <summary> Send literal parameters. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> HelloLiteralAsync()
+        public virtual async Task<ClientResult<Thing>> HelloLiteralAsync(CancellationToken cancellationToken = default)
         {
-            ClientResult result = await HelloLiteralAsync(null).ConfigureAwait(false);
+            ClientResult result = await HelloLiteralAsync(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -467,19 +480,21 @@ namespace UnbrandedTypeSpec
 
         /// <summary> top level method. </summary>
         /// <param name="action"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> TopAction(DateTimeOffset action)
+        public virtual ClientResult<Thing> TopAction(DateTimeOffset action, CancellationToken cancellationToken = default)
         {
-            ClientResult result = TopAction(action, null);
+            ClientResult result = TopAction(action, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
         /// <summary> top level method. </summary>
         /// <param name="action"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> TopActionAsync(DateTimeOffset action)
+        public virtual async Task<ClientResult<Thing>> TopActionAsync(DateTimeOffset action, CancellationToken cancellationToken = default)
         {
-            ClientResult result = await TopActionAsync(action, null).ConfigureAwait(false);
+            ClientResult result = await TopActionAsync(action, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -530,7 +545,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult PatchAction(BinaryContent content, RequestOptions options)
+        public virtual ClientResult PatchAction(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -551,7 +566,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> PatchActionAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> PatchActionAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -572,7 +587,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult AnonymousBody(BinaryContent content, RequestOptions options)
+        public virtual ClientResult AnonymousBody(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -593,7 +608,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> AnonymousBodyAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> AnonymousBodyAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -615,15 +630,16 @@ namespace UnbrandedTypeSpec
         /// <param name="optionalLiteralFloat"> optional literal float. </param>
         /// <param name="optionalLiteralBool"> optional literal bool. </param>
         /// <param name="optionalNullableList"> optional nullable collection. </param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/>, <paramref name="requiredUnion"/> or <paramref name="requiredBadDescription"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> AnonymousBody(string name, BinaryData requiredUnion, AnonymousBodyRequestRequiredLiteralString requiredLiteralString, AnonymousBodyRequestRequiredLiteralInt requiredLiteralInt, AnonymousBodyRequestRequiredLiteralFloat requiredLiteralFloat, bool requiredLiteralBool, string requiredBadDescription, IEnumerable<int> requiredNullableList, AnonymousBodyRequestOptionalLiteralString? optionalLiteralString = default, AnonymousBodyRequestOptionalLiteralInt? optionalLiteralInt = default, AnonymousBodyRequestOptionalLiteralFloat? optionalLiteralFloat = default, bool? optionalLiteralBool = default, IEnumerable<int> optionalNullableList = default)
+        public virtual ClientResult<Thing> AnonymousBody(string name, BinaryData requiredUnion, ThingRequiredLiteralString requiredLiteralString, ThingRequiredLiteralInt requiredLiteralInt, ThingRequiredLiteralFloat requiredLiteralFloat, bool requiredLiteralBool, string requiredBadDescription, IEnumerable<int> requiredNullableList, ThingOptionalLiteralString? optionalLiteralString = default, ThingOptionalLiteralInt? optionalLiteralInt = default, ThingOptionalLiteralFloat? optionalLiteralFloat = default, bool? optionalLiteralBool = default, IEnumerable<int> optionalNullableList = default, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(name, nameof(name));
             Argument.AssertNotNull(requiredUnion, nameof(requiredUnion));
             Argument.AssertNotNull(requiredBadDescription, nameof(requiredBadDescription));
 
-            AnonymousBodyRequest spreadModel = new AnonymousBodyRequest(
+            Thing spreadModel = new Thing(
                 name,
                 requiredUnion,
                 requiredLiteralString,
@@ -638,7 +654,7 @@ namespace UnbrandedTypeSpec
                 optionalNullableList?.ToList() as IList<int> ?? new ChangeTrackingList<int>(),
                 requiredNullableList?.ToList() as IList<int> ?? new ChangeTrackingList<int>(),
                 null);
-            ClientResult result = AnonymousBody(spreadModel, null);
+            ClientResult result = AnonymousBody(spreadModel, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -656,15 +672,16 @@ namespace UnbrandedTypeSpec
         /// <param name="optionalLiteralFloat"> optional literal float. </param>
         /// <param name="optionalLiteralBool"> optional literal bool. </param>
         /// <param name="optionalNullableList"> optional nullable collection. </param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/>, <paramref name="requiredUnion"/> or <paramref name="requiredBadDescription"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> AnonymousBodyAsync(string name, BinaryData requiredUnion, AnonymousBodyRequestRequiredLiteralString requiredLiteralString, AnonymousBodyRequestRequiredLiteralInt requiredLiteralInt, AnonymousBodyRequestRequiredLiteralFloat requiredLiteralFloat, bool requiredLiteralBool, string requiredBadDescription, IEnumerable<int> requiredNullableList, AnonymousBodyRequestOptionalLiteralString? optionalLiteralString = default, AnonymousBodyRequestOptionalLiteralInt? optionalLiteralInt = default, AnonymousBodyRequestOptionalLiteralFloat? optionalLiteralFloat = default, bool? optionalLiteralBool = default, IEnumerable<int> optionalNullableList = default)
+        public virtual async Task<ClientResult<Thing>> AnonymousBodyAsync(string name, BinaryData requiredUnion, ThingRequiredLiteralString requiredLiteralString, ThingRequiredLiteralInt requiredLiteralInt, ThingRequiredLiteralFloat requiredLiteralFloat, bool requiredLiteralBool, string requiredBadDescription, IEnumerable<int> requiredNullableList, ThingOptionalLiteralString? optionalLiteralString = default, ThingOptionalLiteralInt? optionalLiteralInt = default, ThingOptionalLiteralFloat? optionalLiteralFloat = default, bool? optionalLiteralBool = default, IEnumerable<int> optionalNullableList = default, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(name, nameof(name));
             Argument.AssertNotNull(requiredUnion, nameof(requiredUnion));
             Argument.AssertNotNull(requiredBadDescription, nameof(requiredBadDescription));
 
-            AnonymousBodyRequest spreadModel = new AnonymousBodyRequest(
+            Thing spreadModel = new Thing(
                 name,
                 requiredUnion,
                 requiredLiteralString,
@@ -679,7 +696,7 @@ namespace UnbrandedTypeSpec
                 optionalNullableList?.ToList() as IList<int> ?? new ChangeTrackingList<int>(),
                 requiredNullableList?.ToList() as IList<int> ?? new ChangeTrackingList<int>(),
                 null);
-            ClientResult result = await AnonymousBodyAsync(spreadModel, null).ConfigureAwait(false);
+            ClientResult result = await AnonymousBodyAsync(spreadModel, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -696,7 +713,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult FriendlyModel(BinaryContent content, RequestOptions options)
+        public virtual ClientResult FriendlyModel(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -717,7 +734,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> FriendlyModelAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> FriendlyModelAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -727,27 +744,29 @@ namespace UnbrandedTypeSpec
 
         /// <summary> Model can have its friendly name. </summary>
         /// <param name="name"> name of the NotFriend. </param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Friend> FriendlyModel(string name)
+        public virtual ClientResult<Friend> FriendlyModel(string name, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(name, nameof(name));
 
-            FriendlyModelRequest spreadModel = new FriendlyModelRequest(name, null);
-            ClientResult result = FriendlyModel(spreadModel, null);
+            Friend spreadModel = new Friend(name, null);
+            ClientResult result = FriendlyModel(spreadModel, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Friend)result, result.GetRawResponse());
         }
 
         /// <summary> Model can have its friendly name. </summary>
         /// <param name="name"> name of the NotFriend. </param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Friend>> FriendlyModelAsync(string name)
+        public virtual async Task<ClientResult<Friend>> FriendlyModelAsync(string name, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(name, nameof(name));
 
-            FriendlyModelRequest spreadModel = new FriendlyModelRequest(name, null);
-            ClientResult result = await FriendlyModelAsync(spreadModel, null).ConfigureAwait(false);
+            Friend spreadModel = new Friend(name, null);
+            ClientResult result = await FriendlyModelAsync(spreadModel, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Friend)result, result.GetRawResponse());
         }
 
@@ -786,17 +805,19 @@ namespace UnbrandedTypeSpec
         }
 
         /// <summary> addTimeHeader. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult AddTimeHeader()
+        public virtual ClientResult AddTimeHeader(CancellationToken cancellationToken = default)
         {
-            return AddTimeHeader(null);
+            return AddTimeHeader(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
         }
 
         /// <summary> addTimeHeader. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> AddTimeHeaderAsync()
+        public virtual async Task<ClientResult> AddTimeHeaderAsync(CancellationToken cancellationToken = default)
         {
-            return await AddTimeHeaderAsync(null).ConfigureAwait(false);
+            return await AddTimeHeaderAsync(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -812,7 +833,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult ProjectedNameModel(BinaryContent content, RequestOptions options)
+        public virtual ClientResult ProjectedNameModel(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -833,7 +854,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> ProjectedNameModelAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> ProjectedNameModelAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -843,27 +864,29 @@ namespace UnbrandedTypeSpec
 
         /// <summary> Model can have its projected name. </summary>
         /// <param name="name"> name of the ModelWithProjectedName. </param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<ProjectedModel> ProjectedNameModel(string name)
+        public virtual ClientResult<ProjectedModel> ProjectedNameModel(string name, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(name, nameof(name));
 
-            ProjectedNameModelRequest spreadModel = new ProjectedNameModelRequest(name, null);
-            ClientResult result = ProjectedNameModel(spreadModel, null);
+            ProjectedModel spreadModel = new ProjectedModel(name, null);
+            ClientResult result = ProjectedNameModel(spreadModel, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((ProjectedModel)result, result.GetRawResponse());
         }
 
         /// <summary> Model can have its projected name. </summary>
         /// <param name="name"> name of the ModelWithProjectedName. </param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<ProjectedModel>> ProjectedNameModelAsync(string name)
+        public virtual async Task<ClientResult<ProjectedModel>> ProjectedNameModelAsync(string name, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(name, nameof(name));
 
-            ProjectedNameModelRequest spreadModel = new ProjectedNameModelRequest(name, null);
-            ClientResult result = await ProjectedNameModelAsync(spreadModel, null).ConfigureAwait(false);
+            ProjectedModel spreadModel = new ProjectedModel(name, null);
+            ClientResult result = await ProjectedNameModelAsync(spreadModel, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((ProjectedModel)result, result.GetRawResponse());
         }
 
@@ -902,18 +925,20 @@ namespace UnbrandedTypeSpec
         }
 
         /// <summary> return anonymous model. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<ReturnsAnonymousModelResponse> ReturnsAnonymousModel()
+        public virtual ClientResult<ReturnsAnonymousModelResponse> ReturnsAnonymousModel(CancellationToken cancellationToken = default)
         {
-            ClientResult result = ReturnsAnonymousModel(null);
+            ClientResult result = ReturnsAnonymousModel(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((ReturnsAnonymousModelResponse)result, result.GetRawResponse());
         }
 
         /// <summary> return anonymous model. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<ReturnsAnonymousModelResponse>> ReturnsAnonymousModelAsync()
+        public virtual async Task<ClientResult<ReturnsAnonymousModelResponse>> ReturnsAnonymousModelAsync(CancellationToken cancellationToken = default)
         {
-            ClientResult result = await ReturnsAnonymousModelAsync(null).ConfigureAwait(false);
+            ClientResult result = await ReturnsAnonymousModelAsync(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((ReturnsAnonymousModelResponse)result, result.GetRawResponse());
         }
 
@@ -961,25 +986,27 @@ namespace UnbrandedTypeSpec
 
         /// <summary> get extensible enum. </summary>
         /// <param name="accept"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="accept"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<string> GetUnknownValue(string accept)
+        public virtual ClientResult<string> GetUnknownValue(string accept, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(accept, nameof(accept));
 
-            ClientResult result = GetUnknownValue(accept, null);
+            ClientResult result = GetUnknownValue(accept, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
         }
 
         /// <summary> get extensible enum. </summary>
         /// <param name="accept"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="accept"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<string>> GetUnknownValueAsync(string accept)
+        public virtual async Task<ClientResult<string>> GetUnknownValueAsync(string accept, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(accept, nameof(accept));
 
-            ClientResult result = await GetUnknownValueAsync(accept, null).ConfigureAwait(false);
+            ClientResult result = await GetUnknownValueAsync(accept, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
         }
 
@@ -996,7 +1023,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult InternalProtocol(BinaryContent content, RequestOptions options)
+        public virtual ClientResult InternalProtocol(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -1017,7 +1044,7 @@ namespace UnbrandedTypeSpec
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> InternalProtocolAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> InternalProtocolAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -1027,25 +1054,27 @@ namespace UnbrandedTypeSpec
 
         /// <summary> When set protocol false and convenient true, then the protocol method should be internal. </summary>
         /// <param name="body"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="body"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult<Thing> InternalProtocol(Thing body)
+        public virtual ClientResult<Thing> InternalProtocol(Thing body, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(body, nameof(body));
 
-            ClientResult result = InternalProtocol(body, null);
+            ClientResult result = InternalProtocol(body, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
         /// <summary> When set protocol false and convenient true, then the protocol method should be internal. </summary>
         /// <param name="body"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="body"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult<Thing>> InternalProtocolAsync(Thing body)
+        public virtual async Task<ClientResult<Thing>> InternalProtocolAsync(Thing body, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(body, nameof(body));
 
-            ClientResult result = await InternalProtocolAsync(body, null).ConfigureAwait(false);
+            ClientResult result = await InternalProtocolAsync(body, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
             return ClientResult.FromValue((Thing)result, result.GetRawResponse());
         }
 
@@ -1084,17 +1113,19 @@ namespace UnbrandedTypeSpec
         }
 
         /// <summary> When set protocol false and convenient true, the convenient method should be generated even it has the same signature as protocol one. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult StillConvenient()
+        public virtual ClientResult StillConvenient(CancellationToken cancellationToken = default)
         {
-            return StillConvenient(null);
+            return StillConvenient(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
         }
 
         /// <summary> When set protocol false and convenient true, the convenient method should be generated even it has the same signature as protocol one. </summary>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> StillConvenientAsync()
+        public virtual async Task<ClientResult> StillConvenientAsync(CancellationToken cancellationToken = default)
         {
-            return await StillConvenientAsync(null).ConfigureAwait(false);
+            return await StillConvenientAsync(cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1141,24 +1172,92 @@ namespace UnbrandedTypeSpec
 
         /// <summary> head as boolean. </summary>
         /// <param name="id"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="id"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult HeadAsBoolean(string id)
+        public virtual ClientResult HeadAsBoolean(string id, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(id, nameof(id));
 
-            return HeadAsBoolean(id, null);
+            return HeadAsBoolean(id, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
         }
 
         /// <summary> head as boolean. </summary>
         /// <param name="id"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="id"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> HeadAsBooleanAsync(string id)
+        public virtual async Task<ClientResult> HeadAsBooleanAsync(string id, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(id, nameof(id));
 
-            return await HeadAsBooleanAsync(id, null).ConfigureAwait(false);
+            return await HeadAsBooleanAsync(id, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// [Protocol Method] Return hi again
+        /// <list type="bullet">
+        /// <item>
+        /// <description> This <see href="https://aka.ms/azsdk/net/protocol-methods">protocol method</see> allows explicit creation of the request and processing of the response for advanced scenarios. </description>
+        /// </item>
+        /// </list>
+        /// </summary>
+        /// <param name="p1"></param>
+        /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="p1"/> is null. </exception>
+        /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
+        /// <returns> The response returned from the service. </returns>
+        public virtual ClientResult WithApiVersion(string p1, RequestOptions options)
+        {
+            Argument.AssertNotNull(p1, nameof(p1));
+
+            using PipelineMessage message = CreateWithApiVersionRequest(p1, options);
+            return ClientResult.FromResponse(Pipeline.ProcessMessage(message, options));
+        }
+
+        /// <summary>
+        /// [Protocol Method] Return hi again
+        /// <list type="bullet">
+        /// <item>
+        /// <description> This <see href="https://aka.ms/azsdk/net/protocol-methods">protocol method</see> allows explicit creation of the request and processing of the response for advanced scenarios. </description>
+        /// </item>
+        /// </list>
+        /// </summary>
+        /// <param name="p1"></param>
+        /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="p1"/> is null. </exception>
+        /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
+        /// <returns> The response returned from the service. </returns>
+        public virtual async Task<ClientResult> WithApiVersionAsync(string p1, RequestOptions options)
+        {
+            Argument.AssertNotNull(p1, nameof(p1));
+
+            using PipelineMessage message = CreateWithApiVersionRequest(p1, options);
+            return ClientResult.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));
+        }
+
+        /// <summary> Return hi again. </summary>
+        /// <param name="p1"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="p1"/> is null. </exception>
+        /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
+        public virtual ClientResult WithApiVersion(string p1, CancellationToken cancellationToken = default)
+        {
+            Argument.AssertNotNull(p1, nameof(p1));
+
+            return WithApiVersion(p1, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null);
+        }
+
+        /// <summary> Return hi again. </summary>
+        /// <param name="p1"></param>
+        /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="p1"/> is null. </exception>
+        /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
+        public virtual async Task<ClientResult> WithApiVersionAsync(string p1, CancellationToken cancellationToken = default)
+        {
+            Argument.AssertNotNull(p1, nameof(p1));
+
+            return await WithApiVersionAsync(p1, cancellationToken.CanBeCanceled ? new RequestOptions { CancellationToken = cancellationToken } : null).ConfigureAwait(false);
         }
     }
 }

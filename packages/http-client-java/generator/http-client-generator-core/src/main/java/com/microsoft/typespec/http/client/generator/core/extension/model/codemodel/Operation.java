@@ -3,10 +3,9 @@
 
 package com.microsoft.typespec.http.client.generator.core.extension.model.codemodel;
 
-import com.microsoft.typespec.http.client.generator.core.extension.base.util.JsonUtils;
 import com.azure.json.JsonReader;
 import com.azure.json.JsonWriter;
-
+import com.microsoft.typespec.http.client.generator.core.extension.base.util.JsonUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +34,6 @@ public class Operation extends Metadata {
     private ConvenienceApi convenienceApi;
     private Boolean generateProtocolApi;
     private Boolean internalApi;
-    private String crossLanguageDefinitionId;
     // internal
     private OperationGroup operationGroup;
 
@@ -405,28 +403,9 @@ public class Operation extends Metadata {
         this.internalApi = internalApi;
     }
 
-    /**
-     * Gets the cross-language definition ID.
-     *
-     * @return The cross-language definition ID.
-     */
-    public String getCrossLanguageDefinitionId() {
-        return crossLanguageDefinitionId;
-    }
-
-    /**
-     * Sets the cross-language definition ID.
-     *
-     * @param crossLanguageDefinitionId The cross-language definition ID.
-     */
-    public void setCrossLanguageDefinitionId(String crossLanguageDefinitionId) {
-        this.crossLanguageDefinitionId = crossLanguageDefinitionId;
-    }
-
     @Override
     public JsonWriter toJson(JsonWriter jsonWriter) throws IOException {
-        return super.writeParentProperties(jsonWriter.writeStartObject())
-            .writeStringField("operationId", operationId)
+        return super.writeParentProperties(jsonWriter.writeStartObject()).writeStringField("operationId", operationId)
             .writeArrayField("parameters", parameters, JsonWriter::writeJson)
             .writeArrayField("signatureParameters", signatureParameters, JsonWriter::writeJson)
             .writeArrayField("requests", requests, JsonWriter::writeJson)
@@ -445,7 +424,6 @@ public class Operation extends Metadata {
             .writeJsonField("convenienceApi", convenienceApi)
             .writeBooleanField("generateProtocolApi", generateProtocolApi)
             .writeBooleanField("internalApi", internalApi)
-            .writeStringField("crossLanguageDefinitionId", crossLanguageDefinitionId)
             .writeEndObject();
     }
 
@@ -500,8 +478,6 @@ public class Operation extends Metadata {
                 operation.generateProtocolApi = reader.getBoolean();
             } else if ("internalApi".equals(fieldName)) {
                 operation.internalApi = reader.getBoolean();
-            } else if ("crossLanguageDefinitionId".equals(fieldName)) {
-                operation.crossLanguageDefinitionId = reader.getString();
             } else {
                 reader.skipChildren();
             }

@@ -20,17 +20,20 @@ export class CSharpType implements CSharpTypeMetadata {
   namespace: string;
   isBuiltIn: boolean;
   isValueType: boolean;
+  isNullable: boolean;
 
   public constructor(input: {
     name: string;
     namespace: string;
     isBuiltIn?: boolean;
     isValueType?: boolean;
+    isNullable?: boolean;
   }) {
     this.name = input.name;
     this.namespace = input.namespace;
     this.isBuiltIn = input.isBuiltIn !== undefined ? input.isBuiltIn : input.namespace === "System";
     this.isValueType = input.isValueType !== undefined ? input.isValueType : false;
+    this.isNullable = input.isNullable !== undefined ? input.isNullable : false;
   }
 
   isNamespaceInScope(scope?: Scope<string>, visited?: Set<Scope<string>>): boolean {
@@ -101,7 +104,7 @@ export class NumericValue extends CSharpValue {
     this.value = value;
   }
   public emitValue(scope?: Scope<string> | undefined): string {
-    return `${this.value}` ?? "0";
+    return `${this.value ?? 0}`;
   }
 }
 
@@ -112,7 +115,7 @@ export class BooleanValue extends CSharpValue {
     this.value = value;
   }
   public emitValue(scope?: Scope<string> | undefined): string {
-    return `${this.value}` ?? false;
+    return `${this.value}`;
   }
 }
 
@@ -207,7 +210,7 @@ export class CSharpModel extends CSharpDeclaration {
   constructor(
     modelName: string,
     modelNamespace: string,
-    emitter: AssetEmitter<string, Record<string, never>>
+    emitter: AssetEmitter<string, Record<string, never>>,
   ) {
     super(
       new CSharpType({
@@ -216,7 +219,7 @@ export class CSharpModel extends CSharpDeclaration {
         isBuiltIn: false,
         isValueType: false,
       }),
-      emitter
+      emitter,
     );
   }
   properties: Parameter[] = [];

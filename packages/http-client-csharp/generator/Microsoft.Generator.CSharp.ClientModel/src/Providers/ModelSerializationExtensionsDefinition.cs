@@ -20,7 +20,7 @@ using static Microsoft.Generator.CSharp.Snippets.Snippet;
 
 namespace Microsoft.Generator.CSharp.ClientModel.Providers
 {
-    internal sealed class ModelSerializationExtensionsDefinition : TypeProvider
+    public sealed class ModelSerializationExtensionsDefinition : TypeProvider
     {
         private const string WriteStringValueMethodName = "WriteStringValue";
         private const string WriteBase64StringValueMethodName = "WriteBase64StringValue";
@@ -98,7 +98,7 @@ namespace Microsoft.Generator.CSharp.ClientModel.Providers
                 this);
 
             var charValueParameter = new ParameterProvider("value", FormattableStringHelpers.Empty, typeof(char));
-            var value = charValueParameter.AsExpression.As<char>();
+            var value = charValueParameter.As<char>();
             var writeStringChar = new MethodProvider(
                 new MethodSignature(
                     Name: WriteStringValueMethodName,
@@ -408,7 +408,7 @@ namespace Microsoft.Generator.CSharp.ClientModel.Providers
             cases.Add(
                 BuildWriteObjectValueSwitchCase(new CSharpType(typeof(IJsonModel<>), _t), "jsonModel", jsonModel => new MethodBodyStatement[]
                 {
-                    jsonModel.Invoke(nameof(IJsonModel<object>.Write), writer, NullCoalescing(options, ModelSerializationExtensionsSnippets.Wire)).Terminate(),
+                    jsonModel.Invoke(nameof(IJsonModel<object>.Write), writer, options.NullCoalesce(ModelSerializationExtensionsSnippets.Wire)).Terminate(),
                     Break
                 }));
             cases.AddRange(new[]
