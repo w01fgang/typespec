@@ -64,6 +64,27 @@ namespace WellKnown {
    * This model references `google.type.LatLng` from `google/type/latlng.proto`.
    */
   model LatLng is Extern<"google/type/latlng.proto", "google.type.LatLng">;
+
+  /**
+   * A string wrapper.
+   *
+   * This model references `google.protobuf.StringValue` from `google/protobuf/wrappers.proto`.
+   */
+  model StringValue is Extern<"google/protobuf/wrappers.proto", "google.protobuf.StringValue">;
+
+  /**
+   * A boolean wrapper.
+   *
+   * This model references `google.protobuf.BoolValue` from `google/protobuf/wrappers.proto`.
+   */
+  model BoolValue is Extern<"google/protobuf/wrappers.proto", "google.protobuf.BoolValue">;
+
+  /**
+   * A list of dynamically typed values.
+   *
+   * This model references `google.protobuf.ListValue` from `google/protobuf/struct.proto`.
+   */
+  model ListValue is Extern<"google/protobuf/struct.proto", "google.protobuf.ListValue">;
 }
 
 /**

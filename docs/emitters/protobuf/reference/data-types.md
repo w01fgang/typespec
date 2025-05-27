@@ -243,3 +243,63 @@ model TypeSpec.Protobuf.WellKnown.Timestamp
 | Name     | Type    | Description |
 | -------- | ------- | ----------- |
 | \_extern | `never` |             |
+
+Absolutely! Here are the documentation blocks for the three new Google Protobuf types (`StringValue`, `BoolValue`, and `ListValue`) in the same style as your `Timestamp` documentation:
+
+---
+
+### `StringValue` {#TypeSpec.Protobuf.WellKnown.StringValue}
+
+A string wrapper.
+
+This model references `google.protobuf.StringValue` from `google/protobuf/wrappers.proto`.
+
+```typespec
+model TypeSpec.Protobuf.WellKnown.StringValue
+```
+
+#### Properties
+
+| Name     | Type    | Description |
+| -------- | ------- | ----------- |
+| \_extern | `never` |             |
+
+---
+
+### `BoolValue` {#TypeSpec.Protobuf.WellKnown.BoolValue}
+
+A boolean wrapper.
+
+This model references `google.protobuf.BoolValue` from `google/protobuf/wrappers.proto`.
+
+```typespec
+model TypeSpec.Protobuf.WellKnown.BoolValue
+```
+
+#### Properties
+
+| Name     | Type    | Description |
+| -------- | ------- | ----------- |
+| \_extern | `never` |             |
+
+---
+
+### `ListValue` {#TypeSpec.Protobuf.WellKnown.ListValue}
+
+A list of dynamically typed values.
+
+This model references `google.protobuf.ListValue` from `google/protobuf/struct.proto`.
+
+```typespec
+model TypeSpec.Protobuf.WellKnown.ListValue
+```
+
+#### Properties
+
+| Name     | Type    | Description |
+| -------- | ------- | ----------- |
+| \_extern | `never` |             |
+
+---
+
+Let me know if you’d also like me to generate the markdown TOC entries, or if other types like `Struct`, `Value`, or `NumberValue` are needed.
