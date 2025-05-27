@@ -260,8 +260,6 @@ model TypeSpec.Protobuf.WellKnown.StringValue
 | -------- | ------- | ----------- |
 | \_extern | `never` |             |
 
----
-
 ### `BoolValue` {#TypeSpec.Protobuf.WellKnown.BoolValue}
 
 A boolean wrapper.
@@ -277,8 +275,6 @@ model TypeSpec.Protobuf.WellKnown.BoolValue
 | Name     | Type    | Description |
 | -------- | ------- | ----------- |
 | \_extern | `never` |             |
-
----
 
 ### `ListValue` {#TypeSpec.Protobuf.WellKnown.ListValue}
 
